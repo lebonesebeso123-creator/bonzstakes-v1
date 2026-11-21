@@ -31,20 +31,15 @@ jobs:
       - name: Fetch football-data.co.uk
         run: node scripts/fetch-data.mjs 5
 
+      # Pushed from a separate temporary repo, so the working copy (and data/raw) is never touched.
       - name: Keep a copy of the raw data on the data branch
         if: always()
         run: |
-          git config user.name "bonzstakes-bot"
-          git config user.email "bonzstakes-bot@users.noreply.github.com"
-          rm -rf /tmp/raw && cp -r data/raw /tmp/raw
-          git fetch origin data || true
-          git switch --orphan data-tmp
-          git rm -rf --quiet . || true
-          cp -r /tmp/raw/* .
-          git add -A
-          git commit -q -m "data $(date -u +%FT%TZ)" || true
-          git push -f origin data-tmp:data
-          git switch -f ${{ github.ref_name }}
+          rm -rf /tmp/databranch && cp -r data/raw /tmp/databranch && cd /tmp/databranch
+          git init -q && git checkout -q -b data
+          git -c user.name="bonzstakes-bot" -c user.email="bonzstakes-bot@users.noreply.github.com" add -A
+          git -c user.name="bonzstakes-bot" -c user.email="bonzstakes-bot@users.noreply.github.com" commit -q -m "data $(date -u +%FT%TZ)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data
 
       - run: npm ci
         working-directory: edgebook
@@ -53,8 +48,7 @@ jobs:
 
       - name: Build the app's data file
         working-directory: edgebook
-        run: |
-          if [ -f ../scripts/build-data.ts ]; then npx tsx ../scripts/build-data.ts ../data/raw public/data; fi
+        run: npx tsx ../scripts/build-data.ts ../data/raw public/data
 
       - name: Build static site
         working-directory: edgebook
@@ -62,6 +56,21 @@ jobs:
         env:
           STATIC_EXPORT: "true"
           PAGES_BASE_PATH: /${{ github.event.repository.name }}
+
+      - name: Check the real data made it into the site
+        run: test -s edgebook/out/data/live.json
+
+      # A small report on the status branch, so the result can be checked without opening Actions.
+      - name: Report build status
+        if: always()
+        run: |
+          rm -rf /tmp/status && mkdir /tmp/status && cd /tmp/status
+          n=$(node -e "try{console.log(require('$GITHUB_WORKSPACE/edgebook/out/data/live.json').fixtures.length)}catch(e){console.log(-1)}")
+          echo "{\"run\": \"${{ github.run_id }}\", \"commit\": \"${{ github.sha }}\", \"outcome\": \"${{ job.status }}\", \"fixtures\": $n, \"at\": \"$(date -u +%FT%TZ)\"}" > status.json
+          cat status.json
+          git init -q && git checkout -q -b status && git add -A
+          git -c user.name="bonzstakes-bot" -c user.email="bonzstakes-bot@users.noreply.github.com" commit -q -m "status"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" status
 
       - uses: actions/upload-pages-artifact@v3
         with:
