@@ -35,7 +35,7 @@ export function PickRow({
 }) {
   return (
     <li className="flex items-center gap-3 py-2">
-      {tag && <span className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-muted">{tag}</span>}
+      {tag && <span className="w-[3.75rem] shrink-0 text-[12px] font-semibold text-muted">{tag}</span>}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-[14px] font-medium">{pick.label}</span>
@@ -90,35 +90,43 @@ function researchLinks(home: string, away: string) {
   ];
 }
 
+const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
+
 function MatchCard({ m, slipKey }: { m: AnalysedMatch; slipKey?: string }) {
   const [open, setOpen] = useState(false);
+  const [built, setBuilt] = useState(false);
   const f = m.fixture;
   const k = kickoffLabel(f.kickoff);
+  const toggle = () => {
+    setBuilt(true);
+    setOpen((o) => !o);
+  };
   const groups = MARKET_GROUPS.filter((g) => m.options.some((o) => o.group === g.id));
 
   return (
     <article className="card min-w-0 overflow-hidden" aria-label={`${f.home} versus ${f.away}`}>
-      <header className="flex items-start justify-between gap-3 px-4 pt-3.5 pb-1">
-        <div className="min-w-0">
-          <div className="num text-[12px] text-muted">
-            {k.day} · {k.time}
-          </div>
-          <h3 className="mt-1 text-[15px] font-semibold leading-snug">
-            <span className="block truncate">{f.home}</span>
-            <span className="block truncate">{f.away}</span>
-          </h3>
+      <header className="flex items-start gap-3 px-4 pt-4 pb-1.5">
+        <div className="kick num" title={`${k.day} ${k.time}`}>
+          <span className="text-[15px] font-bold text-foreground">{k.time}</span>
+          {!isToday(f.kickoff) && <span className="text-[11px] text-muted">{k.day.split(" ")[0]}</span>}
         </div>
+        <h3 className="min-w-0 flex-1 text-[15px] font-bold leading-snug">
+          <span className="block truncate">{f.home}</span>
+          <span className="block truncate text-foreground/85">{f.away}</span>
+        </h3>
         <dl className="num shrink-0 text-right text-[12px] leading-5 text-muted">
           <div>
             <dt className="inline">xG </dt>
-            <dd className="inline text-foreground">
+            <dd className="inline font-semibold text-foreground">
               {m.xgHome.toFixed(1)}–{m.xgAway.toFixed(1)}
             </dd>
           </div>
-          <div>
-            <dt className="inline">Corners </dt>
-            <dd className="inline text-foreground">{m.corners.toFixed(1)}</dd>
-          </div>
+          {f.hasCorners !== false && (
+            <div>
+              <dt className="inline">Corners </dt>
+              <dd className="inline font-semibold text-foreground">{m.corners.toFixed(1)}</dd>
+            </div>
+          )}
           {m.quality !== "good" && <div className="text-warn">{m.quality === "poor" ? "Thin data" : "Limited data"}</div>}
         </dl>
       </header>
@@ -137,7 +145,7 @@ function MatchCard({ m, slipKey }: { m: AnalysedMatch; slipKey?: string }) {
 
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         aria-expanded={open}
         className="flex min-h-11 w-full items-center justify-center gap-1.5 border-t text-[13px] font-medium text-muted transition-colors hover-fg"
         style={{ borderColor: "var(--border)" }}
@@ -146,10 +154,12 @@ function MatchCard({ m, slipKey }: { m: AnalysedMatch; slipKey?: string }) {
         <ChevronDown size={15} aria-hidden className="chev" data-open={open} />
       </button>
 
-      {open && (
+      <div className="expand" data-open={open}>
+      <div>
+      {built && (
         <div className="space-y-4 border-t px-4 py-3" style={{ borderColor: "var(--border)" }}>
           <section>
-            <h4 className="h-section mb-1.5 !text-[11px]">Form · newest first</h4>
+            <h4 className="mb-2 text-[12px] font-semibold text-muted">Recent form, newest first</h4>
             <div className="space-y-1.5">
               <FormRow team={f.home} form={f.homeForm} />
               <FormRow team={f.away} form={f.awayForm} />
@@ -157,7 +167,7 @@ function MatchCard({ m, slipKey }: { m: AnalysedMatch; slipKey?: string }) {
           </section>
           {groups.map((g) => (
             <section key={g.id}>
-              <h4 className="h-section mb-1.5 !text-[11px]">{g.label}</h4>
+              <h4 className="mb-2 text-[12px] font-semibold text-muted">{g.label}</h4>
               <ul className="grid gap-2 sm:grid-cols-2">
                 {m.options
                   .filter((o) => o.group === g.id)
@@ -177,7 +187,7 @@ function MatchCard({ m, slipKey }: { m: AnalysedMatch; slipKey?: string }) {
             </section>
           ))}
           <section>
-            <h4 className="h-section mb-1.5 !text-[11px]">Dig deeper</h4>
+            <h4 className="mb-2 text-[12px] font-semibold text-muted">Dig deeper</h4>
             <div className="flex flex-wrap gap-2">
               {researchLinks(f.home, f.away).map((l) => (
                 <a key={l.label} href={l.href} target="_blank" rel="noopener noreferrer" className="chip">
@@ -190,6 +200,8 @@ function MatchCard({ m, slipKey }: { m: AnalysedMatch; slipKey?: string }) {
           </section>
         </div>
       )}
+      </div>
+      </div>
     </article>
   );
 }

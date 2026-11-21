@@ -23,7 +23,7 @@ export default function Gate() {
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-on-accent">
             <ShieldCheck size={22} aria-hidden />
           </span>
-          <h2 id="gate-title" className="font-mono text-lg font-semibold">
+          <h2 id="gate-title" className="font-display text-xl font-bold">
             Before you start
           </h2>
         </div>

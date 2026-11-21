@@ -117,7 +117,7 @@ function BetCard({ bet, currency }: { bet: Bet; currency: string }) {
 function Table({ title, rows, cur }: { title: string; rows: ReturnType<typeof breakdown>; cur: string }) {
   return (
   <div className="card-pad overflow-x-auto">
-    <h2 className="mb-2 font-mono text-sm font-semibold">{title}</h2>
+    <h2 className="mb-2 font-display text-[16px] font-bold">{title}</h2>
     <table className="num w-full min-w-[320px] text-sm">
       <thead>
         <tr className="text-left text-xs text-muted">
@@ -167,7 +167,7 @@ function Performance() {
   return (
     <div className="space-y-4">
       <div className="card-pad">
-        <h2 className="mb-3 font-mono text-sm font-semibold">Bankroll over time</h2>
+        <h2 className="mb-3 font-display text-[16px] font-bold">Bankroll over time</h2>
         {series.length >= 2 ? (
           <LineChart data={series} format={(n) => money(n, cur)} />
         ) : (
@@ -185,7 +185,7 @@ function Performance() {
       <LearningCard />
 
       <div className="card-pad">
-        <h2 className="mb-1 font-mono text-sm font-semibold">Did you beat the closing line?</h2>
+        <h2 className="mb-1 font-display text-[16px] font-bold">Did you beat the closing line?</h2>
         {sum.avgClv !== null ? (
           <p className="text-sm">
             Average closing-line value:{" "}

@@ -32,8 +32,7 @@ export default function Toaster() {
       {items.map((t) => (
         <div
           key={t.id}
-          className="card pointer-events-auto max-w-sm px-4 py-2.5 text-sm shadow-xl"
-          style={{ background: "rgba(15,23,42,0.95)" }}
+          className="toast pointer-events-auto max-w-sm rounded-2xl px-4 py-2.5 text-[14px] font-medium"
         >
           {t.text}
         </div>

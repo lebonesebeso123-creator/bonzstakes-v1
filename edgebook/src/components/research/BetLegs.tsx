@@ -136,7 +136,7 @@ export function LearningCard() {
 
   return (
     <div className="card-pad">
-      <h2 className="mb-1 font-mono text-sm font-semibold">What the model learned</h2>
+      <h2 className="mb-1 font-display text-[16px] font-bold">What the model learned</h2>
       {rows.length === 0 ? (
         <p className="text-sm text-muted">
           Once Research slips settle, this compares how often each market landed with how often BonzStakes expected,

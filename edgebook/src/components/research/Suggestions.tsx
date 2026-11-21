@@ -54,7 +54,7 @@ export function Suggestions({ matches, slip }: { matches: AnalysedMatch[]; slip:
       <section className="card-pad min-w-0">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="flex items-center gap-2 font-mono text-sm font-semibold">
+            <h2 className="flex items-center gap-2 font-display text-[16px] font-bold">
               <Brain size={16} aria-hidden className="text-accent" /> Most likely
             </h2>
             <p className="hint">The highest-probability picks across every match you researched.</p>
@@ -71,7 +71,7 @@ export function Suggestions({ matches, slip }: { matches: AnalysedMatch[]; slip:
       <section className="card-pad min-w-0">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="flex items-center gap-2 font-mono text-sm font-semibold">
+            <h2 className="flex items-center gap-2 font-display text-[16px] font-bold">
               <Scale size={16} aria-hidden className="text-accent" /> Value vs the odds
             </h2>
             <p className="hint">Where the estimate beats the bookmaker&apos;s price. Less likely to win, better long-run price.</p>
@@ -100,7 +100,7 @@ export function SlipBuilder({ matches }: { matches: AnalysedMatch[] }) {
 
   return (
     <section className="card-pad min-w-0">
-      <h2 className="flex items-center gap-2 font-mono text-sm font-semibold">
+      <h2 className="flex items-center gap-2 font-display text-[16px] font-bold">
         <Sparkles size={16} aria-hidden className="text-accent" /> Build a slip for me
       </h2>
       <p className="hint">Pick the total odds you want. BonzStakes finds the most likely combination that reaches them.</p>

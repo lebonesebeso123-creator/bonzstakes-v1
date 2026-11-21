@@ -23,19 +23,25 @@ export default function Nav() {
   return (
     <>
       <header
-        className="sticky top-0 z-40 border-b backdrop-blur-xl"
-        style={{
-          borderColor: "var(--border)",
-          background: "rgba(7,11,22,0.72)",
-          paddingTop: "env(safe-area-inset-top, 0px)",
-        }}
+        className="glass-bar sticky top-0 z-40 border-b"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4">
           <Link href="/" className="flex items-center gap-2.5" aria-label="BonzStakes home">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent font-mono text-sm font-bold text-on-accent">
-              B
+            <span className="logo-mark" aria-hidden>
+              <svg viewBox="0 0 32 32" width="32" height="32">
+                <defs>
+                  <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stopColor="#ffd978" />
+                    <stop offset="1" stopColor="#f2c14e" />
+                  </linearGradient>
+                </defs>
+                <rect width="32" height="32" rx="9" fill="url(#lg)" />
+                <path d="M10 8h7.2a4.4 4.4 0 0 1 1.9 8.4A4.8 4.8 0 0 1 17.6 25H10z" fill="#1d1503" />
+                <path d="M13.4 11.2v3.6h3.4a1.8 1.8 0 0 0 0-3.6zm0 6.6v4h4a2 2 0 0 0 0-4z" fill="#f2c14e" />
+              </svg>
             </span>
-            <span className="font-mono text-[15px] font-semibold tracking-tight">BonzStakes</span>
+            <span className="font-display text-[17px] font-bold tracking-[-0.01em]">BonzStakes</span>
           </Link>
 
           <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
@@ -44,9 +50,9 @@ export default function Nav() {
                 key={href}
                 href={href}
                 aria-current={isActive(href) ? "page" : undefined}
-                className={`flex min-h-10 items-center gap-2 rounded-lg px-3.5 text-sm font-medium transition-colors ${
+                className={`flex min-h-10 items-center gap-2 rounded-xl px-3.5 text-sm font-semibold transition-colors ${
                   isActive(href)
-                    ? "bg-white/10 text-foreground"
+                    ? "bg-white/10 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
                     : "text-muted hover:bg-white/5 hover:text-foreground"
                 }`}
               >
@@ -69,12 +75,8 @@ export default function Nav() {
 
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur-xl md:hidden"
-        style={{
-          borderColor: "var(--border)",
-          background: "rgba(7,11,22,0.82)",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        }}
+        className="glass-bar fixed inset-x-0 bottom-0 z-40 border-t md:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <ul className="mx-auto grid max-w-md grid-cols-4">
           {links.map(({ href, label, Icon }) => (
@@ -82,11 +84,12 @@ export default function Nav() {
               <Link
                 href={href}
                 aria-current={isActive(href) ? "page" : undefined}
-                className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors ${
-                  isActive(href) ? "text-accent" : "text-muted"
+                className={`relative flex min-h-[3.75rem] flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors ${
+                  isActive(href) ? "text-gold" : "text-muted"
                 }`}
               >
-                <Icon size={20} aria-hidden />
+                {isActive(href) && <span className="nav-glow" aria-hidden />}
+                <Icon size={21} strokeWidth={isActive(href) ? 2.3 : 1.9} aria-hidden />
                 {label}
               </Link>
             </li>

@@ -13,15 +13,15 @@ export function Badge({
 }) {
   const tones = {
     neutral: "bg-white/10 text-slate-200",
-    green: "bg-emerald-500/20 text-emerald-300",
+    green: "bg-[rgba(94,224,160,0.16)] text-mint",
     amber: "bg-amber-400/20 text-amber-300",
     red: "bg-red-500/20 text-red-300",
-    blue: "bg-blue-400/20 text-blue-300",
+    blue: "bg-[rgba(117,170,219,0.18)] text-sky",
     violet: "bg-purple-400/20 text-purple-300",
   };
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${tones[tone]} ${className}`}
+      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold capitalize ${tones[tone]} ${className}`}
     >
       {children}
     </span>
@@ -188,7 +188,7 @@ export function EmptyState({
       <div className="mb-3 text-muted" aria-hidden>
         {icon}
       </div>
-      <h2 className="font-mono text-base font-semibold">{title}</h2>
+      <h2 className="font-display text-[17px] font-bold">{title}</h2>
       <p className="mt-1.5 max-w-sm text-sm text-muted">{body}</p>
       {action && <div className="mt-5">{action}</div>}
     </div>
@@ -222,7 +222,7 @@ export function Modal({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/75 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="sheet-backdrop fixed inset-0 z-[70] flex items-end justify-center p-0 sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
@@ -232,10 +232,11 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={id}
         onClick={(e) => e.stopPropagation()}
-        className="card max-h-[92vh] w-full overflow-y-auto rounded-b-none p-5 shadow-2xl outline-none sm:max-w-md sm:rounded-b-[14px]"
-        style={{ background: "rgba(14,20,36,0.94)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
+        className="sheet max-h-[92dvh] w-full overflow-y-auto rounded-t-[26px] p-5 pt-3 outline-none sm:max-w-md sm:rounded-[24px] sm:pt-5"
+        style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }}
       >
-        <h2 id={id} className="mb-4 font-mono text-lg font-semibold">
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden />
+        <h2 id={id} className="font-display mb-4 text-xl font-bold tracking-[-0.01em]">
           {title}
         </h2>
         {children}

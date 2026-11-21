@@ -69,7 +69,7 @@ export default function AccountPage() {
   return (
     <div className="max-w-3xl">
       <h1 className="h-page">Account</h1>
-      <p className="mt-1 mb-6 text-sm text-muted">Your paper bankroll, staking rules and data. Everything stays on this device.</p>
+      <p className="mt-1 mb-6 text-sm text-muted">Your paper bankroll, match data, sync and backups.</p>
 
       <section className="mb-8" aria-labelledby="bk">
         <h2 id="bk" className="h-section mb-3">Paper bankroll</h2>
