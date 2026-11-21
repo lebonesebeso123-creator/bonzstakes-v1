@@ -103,6 +103,14 @@ export interface SavedAnalysis {
 
 export type BetStatus = "open" | "won" | "lost" | "void";
 
+export interface MatchResultData {
+  home: number;
+  away: number;
+  htHome: number;
+  htAway: number;
+  corners?: number;
+}
+
 /** One selection on a slip. One per match; combo picks count as one selection. */
 export interface Leg {
   id: string;
@@ -115,13 +123,13 @@ export interface Leg {
   key: string;
   selection: string;
   odds: number;
+  /** false when `odds` was estimated (no bookmaker price) and should be replaced with yours */
+  priced?: boolean;
   /** BonzStakes estimate when added */
   prob: number;
   modelProb?: number;
   status: BetStatus;
-  result?: { home: number; away: number; htHome: number; htAway: number; corners: number };
-  /** already counted in the learning stats */
-  learned?: boolean;
+  result?: MatchResultData;
 }
 
 export interface Bet {
@@ -161,6 +169,8 @@ export interface Note {
 
 export interface Settings {
   currency: string;
+  /** your BonzStakes proxy URL; empty = demo data */
+  dataUrl?: string;
   kellyFraction: number;
   maxStakePct: number;
   evThreshold: number;
@@ -177,6 +187,11 @@ export interface AppState {
   settings: Settings;
   /** selections waiting on the bet slip */
   slip?: Leg[];
-  /** per selection key: picks settled, wins, and the expected wins */
-  learning?: Record<string, { n: number; wins: number; expected: number }>;
+  /** learning ignores slips placed before this (set by "Reset learning") */
+  learningSince?: string;
+  /** ids of deleted bets/notes, so sync doesn't bring them back */
+  deleted?: string[];
+  /** last local change, used by sync */
+  updatedAt?: string;
+  sync?: { gistId?: string; token?: string; lastSync?: string };
 }

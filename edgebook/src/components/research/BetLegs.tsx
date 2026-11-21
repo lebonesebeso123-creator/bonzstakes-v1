@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Circle, Clock, FlaskConical, RefreshCw, XCircle } from "lucide-react";
 import { applyResults, resetLearning, useAppState } from "@/lib/store";
-import { dataProvider, demoForceResult } from "@/lib/research/data";
-import { learnFactor, settles } from "@/lib/research/engine";
-import { MARKET_GROUPS, MatchResult, SELECTION_BY_KEY } from "@/lib/research/markets";
+import { ResultOrVoid } from "@/lib/research/data";
+import { resultFor } from "@/lib/research/provider";
+import { LEARN_MIN, learnFactor, learningFrom, settleOutcome } from "@/lib/research/engine";
+import { MARKET_GROUPS, SELECTION_BY_KEY } from "@/lib/research/markets";
 import { Leg } from "@/lib/types";
 import { toast } from "@/components/Toaster";
 import { kickoffLabel } from "./MatchCard";
@@ -22,7 +23,7 @@ export function LegList({ legs }: { legs: Leg[] }) {
   return (
     <ul className="mt-3 divide-y rounded-xl px-3" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
       {legs.map((l) => (
-        <li key={l.id} className="flex items-start gap-2.5 py-2.5">
+        <li key={l.id} className={`flex items-start gap-2.5 py-2.5 ${l.status === "void" ? "opacity-60" : ""}`}>
           <span className="mt-0.5 shrink-0">
             <LegIcon s={l.status} />
           </span>
@@ -32,8 +33,13 @@ export function LegList({ legs }: { legs: Leg[] }) {
               {l.home} v {l.away}
             </div>
             <div className="num text-[12px] text-muted">
-              {l.result ? (
-                <>FT {l.result.home}–{l.result.away} · HT {l.result.htHome}–{l.result.htAway} · {l.result.corners} corners</>
+              {l.status === "void" ? (
+                <>Void · stake on this leg counts at 1.00</>
+              ) : l.result ? (
+                <>
+                  FT {l.result.home}–{l.result.away} · HT {l.result.htHome}–{l.result.htAway}
+                  {l.result.corners ? <> · {l.result.corners} corners</> : null}
+                </>
               ) : (
                 <>{kickoffLabel(l.kickoff).day} · {kickoffLabel(l.kickoff).time}</>
               )}
@@ -66,17 +72,25 @@ export function ResultChecker() {
     async (opts: { quiet?: boolean; forceDemo?: boolean } = {}) => {
       if (!pending.length) return;
       setBusy(true);
-      const results: Record<string, MatchResult> = {};
+      const results: Record<string, ResultOrVoid> = {};
+      let failed = false;
       for (const id of new Set(pending.map((l) => l.fixtureId))) {
-        const r = opts.forceDemo ? demoForceResult(id) : await dataProvider.getResult(id);
-        if (r) results[id] = r;
+        try {
+          const r = await resultFor(id, state.settings.dataUrl, opts.forceDemo);
+          if (r) results[id] = r;
+        } catch {
+          failed = true;
+        }
       }
       const n = Object.keys(results).length;
-      if (n) applyResults(results, settles);
+      if (n) applyResults(results, settleOutcome);
       setBusy(false);
-      if (!opts.quiet) toast(n ? `Settled ${n} ${n === 1 ? "match" : "matches"}` : "No new results yet. Matches finish about 2 hours after kick-off.");
+      if (opts.quiet) return;
+      if (n) toast(`Settled ${n} ${n === 1 ? "match" : "matches"}`);
+      else if (failed) toast("Couldn't reach the results source. Try again later.");
+      else toast("No new results yet. Matches finish about 2 hours after kick-off.");
     },
-    [pending]
+    [pending, state.settings.dataUrl]
   );
 
   useEffect(() => {
@@ -92,7 +106,7 @@ export function ResultChecker() {
       <button className="btn-secondary btn-sm" onClick={() => check()} disabled={busy}>
         <RefreshCw size={14} aria-hidden className={busy ? "animate-spin" : ""} /> Check results
       </button>
-      {dataProvider.isDemo && (
+      {pending.some((l) => !l.fixtureId.startsWith("fd:")) && (
         <button className="btn-ghost btn-sm" onClick={() => check({ forceDemo: true })} disabled={busy}>
           <FlaskConical size={14} aria-hidden /> Simulate results (demo)
         </button>
@@ -108,7 +122,7 @@ export function ResultChecker() {
 export function LearningCard() {
   const state = useAppState();
   const rows = useMemo(() => {
-    const L = state.learning ?? {};
+    const L = learningFrom(state.bets, state.learningSince);
     return MARKET_GROUPS.map((g) => {
       const keys = Object.keys(L).filter((k) => SELECTION_BY_KEY[k]?.group === g.id);
       const n = keys.reduce((a, k) => a + L[k].n, 0);
@@ -118,7 +132,7 @@ export function LearningCard() {
       const factor = keys.reduce((a, k) => a + learnFactor(L, k) * L[k].n, 0) / n;
       return { g, n, hit: wins / n, exp: expected / n, factor };
     }).filter(Boolean) as { g: (typeof MARKET_GROUPS)[number]; n: number; hit: number; exp: number; factor: number }[];
-  }, [state.learning]);
+  }, [state.bets, state.learningSince]);
 
   return (
     <div className="card-pad">
@@ -131,8 +145,8 @@ export function LearningCard() {
       ) : (
         <>
           <p className="hint mb-3">
-            Each settled selection adjusts that market&apos;s future estimates by up to ±15%. It moves slowly on purpose: a
-            few results are mostly luck.
+            After {LEARN_MIN} settled picks, a market&apos;s future estimates are nudged by up to ±15% toward what actually
+            happened. It moves slowly on purpose: a few results are mostly luck.
           </p>
           <div className="overflow-x-auto">
             <table className="num w-full text-[13px]">
@@ -153,7 +167,13 @@ export function LearningCard() {
                     <td className="py-2 text-right">{(r.exp * 100).toFixed(0)}%</td>
                     <td className={`py-2 text-right ${r.hit >= r.exp ? "text-emerald-400" : "text-danger"}`}>{(r.hit * 100).toFixed(0)}%</td>
                     <td className="py-2 text-right">
-                      {Math.abs(r.factor - 1) < 0.005 ? "Same" : `${r.factor > 1 ? "+" : "−"}${Math.abs((r.factor - 1) * 100).toFixed(0)}%`}
+                      {r.n < LEARN_MIN ? (
+                        <span className="text-muted" title={`Adjusts after ${LEARN_MIN} picks`}>{LEARN_MIN - r.n} more</span>
+                      ) : Math.abs(r.factor - 1) < 0.005 ? (
+                        "Same"
+                      ) : (
+                        `${r.factor > 1 ? "+" : "−"}${Math.abs((r.factor - 1) * 100).toFixed(0)}%`
+                      )}
                     </td>
                   </tr>
                 ))}

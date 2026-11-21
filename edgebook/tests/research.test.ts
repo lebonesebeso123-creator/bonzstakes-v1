@@ -60,7 +60,7 @@ test("demo data is repeatable and leagues are ordered biggest first", async () =
   const ms = a.map((f) => analyseFixture(f, [...ALL], undefined, avg[f.league.id])!);
   const leagues = groupByLeague(ms);
   for (let i = 1; i < leagues.length; i++) assert.ok(leagues[i - 1].tier <= leagues[i].tier);
-  assert.equal(demoForceResult(a[0].id)?.home, demoForceResult(a[0].id)?.home);
+  assert.deepEqual(demoForceResult(a[0].id), demoForceResult(a[0].id));
 });
 
 test("results only arrive after the match", async () => {
@@ -82,11 +82,12 @@ test("slip builder reaches the target with one pick per match", async () => {
     assert.ok(Math.abs(s.chance - s.legs.reduce((a, l) => a * l.prob, 1)) < 1e-12);
   }
   // edges stay realistic, not fantasy
-  for (const p of valuePicks(ms)) assert.ok(p.edge < 0.35, `${p.label} edge ${p.edge}`);
+  for (const p of valuePicks(ms)) assert.ok(p.priced && p.edge! < 0.35, `${p.label} edge ${p.edge}`);
 });
 
 test("learning nudges estimates toward what actually happened, within limits", () => {
   assert.equal(learnFactor(undefined, "bttsYes"), 1);
+  assert.equal(learnFactor({ bttsYes: { n: 9, wins: 9, expected: 4 } }, "bttsYes"), 1, "needs 10 picks first");
   const hot = learnFactor({ bttsYes: { n: 20, wins: 16, expected: 11 } }, "bttsYes");
   const cold = learnFactor({ bttsYes: { n: 20, wins: 6, expected: 11 } }, "bttsYes");
   assert.ok(hot > 1 && hot <= 1.15);

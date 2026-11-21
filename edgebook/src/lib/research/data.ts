@@ -27,16 +27,25 @@ export interface Fixture {
   /** average corners won / conceded over recent matches */
   homeCorners: { for: number; against: number };
   awayCorners: { for: number; against: number };
-  /** decimal bookmaker odds keyed by selection key */
+  /** decimal bookmaker odds keyed by selection key (only markets the source prices) */
   odds: Record<string, number>;
+  /** when the odds were last refreshed (ISO) */
+  oddsUpdated?: string;
+  /** false when the source has no corner stats; corners markets are then hidden */
+  hasCorners?: boolean;
+  /** source status, e.g. "SCHEDULED", "POSTPONED" */
+  status?: string;
 }
+
+/** A finished match, or "void" when it was postponed, cancelled or abandoned. */
+export type ResultOrVoid = MatchResult | "void";
 
 export interface DataProvider {
   readonly name: string;
   readonly isDemo: boolean;
   getFixtures(from: Date, to: Date): Promise<Fixture[]>;
-  /** null until the match has finished */
-  getResult(fixtureId: string, now?: Date): Promise<MatchResult | null>;
+  /** null until the match has finished; "void" if it won't be played */
+  getResult(fixtureId: string, now?: Date): Promise<ResultOrVoid | null>;
 }
 
 /* ---------------- deterministic randomness ---------------- */
@@ -244,6 +253,9 @@ function buildFixture(l: DemoLeague, f: { id: string; h: number; a: number; kick
     homeCorners: hf.corners,
     awayCorners: af.corners,
     odds: bookOdds(l, f.h, f.a, f.id),
+    oddsUpdated: new Date(Math.min(Date.now(), f.kickoff.getTime() - 3600_000 * 3)).toISOString(),
+    hasCorners: true,
+    status: isPostponed(f.id) ? "POSTPONED" : "SCHEDULED",
   };
 }
 
@@ -266,9 +278,15 @@ export const DemoProvider: DataProvider = {
     const [h, a] = pair.split("-").map(Number);
     const fx = weekFixtures(l, mondayOf(new Date(`${date}T12:00:00`))).find((f) => f.id === fixtureId);
     if (!fx || now.getTime() < fx.kickoff.getTime() + 115 * 60_000) return null;
+    if (isPostponed(fixtureId)) return "void";
     return simulateResult(fixtureId, l, h, a);
   },
 };
+
+/** About 1 in 60 demo matches gets postponed, to exercise voids. */
+function isPostponed(id: string) {
+  return hash(`pp:${id}`) % 60 === 0;
+}
 
 function simulateResult(id: string, l: DemoLeague, h: number, a: number): MatchResult {
   const t = trueRates(l, h, a);
@@ -285,12 +303,13 @@ function simulateResult(id: string, l: DemoLeague, h: number, a: number): MatchR
 }
 
 /** Demo only: the final result even if the match hasn't been played yet (for testing settlement). */
-export function demoForceResult(fixtureId: string): MatchResult | null {
+export function demoForceResult(fixtureId: string): ResultOrVoid | null {
   const [lid, , pair] = fixtureId.split("|");
   const l = LEAGUES.find((x) => x.id === lid);
   if (!l || !pair) return null;
+  if (isPostponed(fixtureId)) return "void";
   const [h, a] = pair.split("-").map(Number);
   return simulateResult(fixtureId, l, h, a);
 }
 
-export const dataProvider: DataProvider = DemoProvider;
+

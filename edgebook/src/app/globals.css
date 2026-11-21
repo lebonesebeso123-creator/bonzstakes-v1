@@ -261,6 +261,11 @@ button:disabled {
     background: rgba(251, 191, 36, 0.12);
     border: 1px solid rgba(251, 191, 36, 0.3);
   }
+  .live-pill {
+    @apply inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold text-emerald-200;
+    background: rgba(34, 197, 94, 0.12);
+    border: 1px solid rgba(34, 197, 94, 0.35);
+  }
   .progress {
     @apply relative h-1.5 overflow-hidden rounded-full;
     background: rgba(255, 255, 255, 0.08);

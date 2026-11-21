@@ -3,7 +3,7 @@
 import { memo, useState } from "react";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import { FormMatch } from "@/lib/types";
-import { AnalysedMatch, Pick } from "@/lib/research/engine";
+import { AnalysedMatch, Pick, isValue } from "@/lib/research/engine";
 import { MARKET_GROUPS } from "@/lib/research/markets";
 import PickButton from "./PickButton";
 
@@ -39,13 +39,16 @@ export function PickRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-[14px] font-medium">{pick.label}</span>
-          {pick.edge >= 0.02 && <span className="value-tag shrink-0">Value</span>}
+          {isValue(pick) && <span className="value-tag shrink-0">Value</span>}
         </div>
         <div className="mt-1 flex items-center gap-2">
           <ProbBar p={pick.prob} />
           <span className="num text-[12px] text-muted">
-            {(pick.prob * 100).toFixed(0)}%
-            <span className="sr-only"> estimated chance. Model alone {(pick.modelProb * 100).toFixed(0)}%, bookmaker {(pick.implied * 100).toFixed(0)}%.</span>
+            {(pick.prob * 100).toFixed(0)}%<span className="opacity-60"> · fair {pick.fairOdds.toFixed(2)}</span>
+            <span className="sr-only">
+              {" "}estimated chance. Model alone {(pick.modelProb * 100).toFixed(0)}%
+              {pick.implied !== null ? `, bookmaker ${(pick.implied * 100).toFixed(0)}%` : ", no bookmaker price"}.
+            </span>
           </span>
         </div>
       </div>
@@ -163,7 +166,8 @@ function MatchCard({ m, slipKey }: { m: AnalysedMatch; slipKey?: string }) {
                       <span className="min-w-0">
                         <span className="block truncate text-[13px]">{o.label}</span>
                         <span className="num text-[11px] text-muted">
-                          {(o.prob * 100).toFixed(0)}%{o.edge >= 0.02 && <span className="ml-1.5 text-accent">value</span>}
+                          {(o.prob * 100).toFixed(0)}% · fair {o.fairOdds.toFixed(2)}
+                          {isValue(o) && <span className="ml-1.5 text-accent">value</span>}
                         </span>
                       </span>
                       <PickButton pick={o} fixture={f} active={slipKey === o.key} compact />

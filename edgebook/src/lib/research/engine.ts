@@ -1,7 +1,16 @@
 import { predictFootball, DEFAULT_FOOTBALL, validRows } from "../models/football";
 import { Quality } from "../types";
 import { Fixture } from "./data";
-import { MarketGroup, MatchResult, SELECTIONS, SELECTION_BY_KEY, probsFromRates, selectionLabel } from "./markets";
+import {
+  MarketGroup,
+  MatchResult,
+  SELECTIONS,
+  SELECTION_BY_KEY,
+  TYPICAL_MARGIN,
+  fairFromOdds,
+  probsFromRates,
+  selectionLabel,
+} from "./markets";
 
 /* ---------------- time frames ---------------- */
 
@@ -45,14 +54,35 @@ export function rangeFor(tf: TimeFrame, now = new Date()): { from: Date; to: Dat
 /** Per selection key: how often the model's picks landed vs how often it expected them to. */
 export type Learning = Record<string, { n: number; wins: number; expected: number }>;
 
-const LEARN_PRIOR = 8;
+const LEARN_PRIOR = 20;
+/** No adjustment until a selection has this many settled picks: below that it's mostly luck. */
+export const LEARN_MIN = 10;
 
 /** Multiplier applied to the model's probability for a selection, from past settled picks. */
 export function learnFactor(learning: Learning | undefined, key: string): number {
   const s = learning?.[key];
-  if (!s || s.n === 0) return 1;
+  if (!s || s.n < LEARN_MIN) return 1;
   const f = (s.wins + LEARN_PRIOR) / (s.expected + LEARN_PRIOR);
   return Math.min(1.15, Math.max(0.85, f));
+}
+
+/** Builds the learning stats from settled slip legs (won/lost only; voids don't count). */
+export function learningFrom(
+  bets: { placedAt: string; legs?: { key: string; prob: number; status: string }[] }[],
+  since?: string
+): Learning {
+  const out: Learning = {};
+  for (const b of bets) {
+    if (!b.legs || (since && b.placedAt < since)) continue;
+    for (const l of b.legs) {
+      if (l.status !== "won" && l.status !== "lost") continue;
+      const s = (out[l.key] ??= { n: 0, wins: 0, expected: 0 });
+      s.n++;
+      s.wins += l.status === "won" ? 1 : 0;
+      s.expected += l.prob;
+    }
+  }
+  return out;
 }
 
 /* ---------------- analysis ---------------- */
@@ -63,14 +93,23 @@ export interface Pick {
   group: MarketGroup;
   label: string;
   prob: number;
+  /** bookmaker price, or an estimate of it when the market isn't priced (see `priced`) */
   odds: number;
-  /** expected value per unit at these odds */
-  edge: number;
-  /** bookmaker's margin-free implied probability (approximate) */
-  implied: number;
-  /** the form model on its own, before blending with the market */
+  /** true when `odds` is a real bookmaker price */
+  priced: boolean;
+  /** 1 / prob: the price at which this pick breaks even */
+  fairOdds: number;
+  /** expected value per unit at the bookmaker price; null when there is no real price */
+  edge: number | null;
+  /** bookmaker's margin-free probability, when priced */
+  implied: number | null;
+  /** the form model on its own, before blending */
   modelProb: number;
 }
+
+/** Value flag threshold: estimate must beat the price by at least this much. */
+export const VALUE_EDGE = 0.02;
+export const isValue = (p: Pick) => p.edge !== null && p.edge >= VALUE_EDGE;
 
 export interface AnalysedMatch {
   fixture: Fixture;
@@ -91,7 +130,8 @@ const MIN_ODDS = 1.2;
  * either one alone (log loss 0.603 vs model-only 0.622).
  */
 export const MODEL_WEIGHT = 0.3;
-const MARGIN = 1.06;
+/** With no price to lean on, the model is pulled 35% toward an average match in the league. */
+export const UNPRICED_SHRINK = 0.35;
 
 export function leagueGoalAverages(fixtures: Fixture[]): Record<string, number> {
   const acc: Record<string, { g: number; n: number }> = {};
@@ -122,19 +162,30 @@ export function analyseFixture(
     leagueGoals,
   });
   if (!model) return null;
-  const corners =
-    (f.homeCorners.for + f.awayCorners.against) / 2 + (f.awayCorners.for + f.homeCorners.against) / 2;
+  const hasCorners = f.hasCorners !== false;
+  const corners = hasCorners
+    ? (f.homeCorners.for + f.awayCorners.against) / 2 + (f.awayCorners.for + f.homeCorners.against) / 2
+    : 10;
   const probs = probsFromRates(model.lambdaHome, model.lambdaAway, corners);
+  // an "average match" in this league, used to tame model-only estimates
+  const ha = 1.25;
+  const base = probsFromRates((leagueGoals * ha) / (1 + ha), leagueGoals / (1 + ha), 10);
+  const fair = fairFromOdds(f.odds);
   const set = new Set(groups);
   const options: Pick[] = [];
   for (const s of SELECTIONS) {
     if (!set.has(s.group)) continue;
-    const odds = f.odds[s.key];
-    if (!odds) continue;
-    const implied = Math.min(0.97, 1 / (odds * MARGIN));
+    if (s.group === "corners" && !hasCorners) continue;
     const modelProb = probs[s.key];
-    const blended = MODEL_WEIGHT * modelProb + (1 - MODEL_WEIGHT) * implied;
-    const prob = Math.min(0.99, Math.max(0.01, blended * learnFactor(learning, s.key)));
+    const market = fair[s.key];
+    const raw =
+      market !== undefined
+        ? MODEL_WEIGHT * modelProb + (1 - MODEL_WEIGHT) * market
+        : (1 - UNPRICED_SHRINK) * modelProb + UNPRICED_SHRINK * base[s.key];
+    const prob = Math.min(0.99, Math.max(0.01, raw * learnFactor(learning, s.key)));
+    const price = f.odds[s.key];
+    const priced = !!price && price > 1;
+    const odds = priced ? price! : Math.max(1.01, Math.round((1 / (prob * TYPICAL_MARGIN)) * 100) / 100);
     options.push({
       fixtureId: f.id,
       key: s.key,
@@ -142,8 +193,10 @@ export function analyseFixture(
       label: selectionLabel(s.key, f.home, f.away),
       prob,
       odds,
-      edge: prob * odds - 1,
-      implied,
+      priced,
+      fairOdds: Math.round((1 / prob) * 100) / 100,
+      edge: priced ? prob * odds - 1 : null,
+      implied: market ?? null,
       modelProb,
     });
   }
@@ -212,8 +265,8 @@ export function valuePicks(matches: AnalysedMatch[], limit = 8): Pick[] {
   const all = matches
     .filter((m) => m.quality !== "poor")
     .flatMap((m) => m.options)
-    .filter((p) => p.edge >= 0.02 && p.prob >= 0.4 && p.odds <= 4)
-    .sort((a, b) => b.edge - a.edge);
+    .filter((p) => isValue(p) && p.prob >= 0.4 && p.odds <= 4)
+    .sort((a, b) => b.edge! - a.edge!);
   return onePerMatch(all, limit);
 }
 
@@ -276,7 +329,17 @@ export function buildSlip(matches: AnalysedMatch[], target: number, maxLegs = 12
 
 /* ---------------- settlement ---------------- */
 
-export function settles(key: string, r: MatchResult): boolean {
+export type Outcome = "won" | "lost" | "void";
+
+/** Settles one selection. Voids it when the source lacks the data it needs (e.g. corners). */
+export function settleOutcome(key: string, r: MatchResult): Outcome {
   const def = SELECTION_BY_KEY[key];
-  return def ? def.settle(r) : false;
+  if (!def) return "void";
+  const needs = def.group === "corners" ? "corners" : def.group === "htBtts" || def.group === "htGoals" ? "ht" : null;
+  if (needs && r.missing?.includes(needs)) return "void";
+  return def.settle(r) ? "won" : "lost";
+}
+
+export function settles(key: string, r: MatchResult): boolean {
+  return settleOutcome(key, r) === "won";
 }

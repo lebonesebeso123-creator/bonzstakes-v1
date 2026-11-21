@@ -30,7 +30,7 @@ function fresh(ack: string | null): AppState {
     notes: [],
     settings: { ...DEFAULT_SETTINGS },
     slip: [],
-    learning: {},
+    deleted: [],
   };
 }
 
@@ -52,7 +52,7 @@ function normalise(raw: Partial<AppState>): AppState {
     notes: Array.isArray(raw.notes) ? raw.notes : [],
     settings: { ...DEFAULT_SETTINGS, ...(raw.settings ?? {}) },
     slip: Array.isArray(raw.slip) ? raw.slip : [],
-    learning: raw.learning && typeof raw.learning === "object" ? raw.learning : {},
+    deleted: Array.isArray(raw.deleted) ? raw.deleted : [],
     startingBankroll:
       typeof raw.startingBankroll === "number" && raw.startingBankroll >= 0
         ? raw.startingBankroll
@@ -137,7 +137,7 @@ function subscribe(cb: () => void) {
 }
 
 function update(fn: (s: AppState) => AppState) {
-  cache = fn(getSnapshot());
+  cache = { ...fn(getSnapshot()), updatedAt: new Date().toISOString() };
   persist();
   emit();
 }
@@ -180,7 +180,7 @@ export function patchBet(id: string, patch: Partial<Bet>) {
 }
 
 export const deleteBet = (id: string) =>
-  update((s) => ({ ...s, bets: s.bets.filter((b) => b.id !== id) }));
+  update((s) => ({ ...s, bets: s.bets.filter((b) => b.id !== id), deleted: [...(s.deleted ?? []), id] }));
 
 export function addNote(n: Omit<Note, "id" | "createdAt">) {
   update((s) => ({
@@ -190,7 +190,7 @@ export function addNote(n: Omit<Note, "id" | "createdAt">) {
 }
 
 export const deleteNote = (id: string) =>
-  update((s) => ({ ...s, notes: s.notes.filter((n) => n.id !== id) }));
+  update((s) => ({ ...s, notes: s.notes.filter((n) => n.id !== id), deleted: [...(s.deleted ?? []), id] }));
 
 export function addAdjustment(a: Omit<Adjustment, "id" | "date">) {
   update((s) => ({
@@ -205,6 +205,11 @@ export function resetBankroll(amount: number, clearBets: boolean) {
     startingBankroll: amount,
     adjustments: [],
     bets: clearBets ? [] : s.bets,
+    deleted: [
+      ...(s.deleted ?? []),
+      ...s.adjustments.map((a) => a.id),
+      ...(clearBets ? s.bets.map((b) => b.id) : []),
+    ],
   }));
 }
 
@@ -212,8 +217,63 @@ export function updateSettings(p: Partial<Settings>) {
   update((s) => ({ ...s, settings: { ...s.settings, ...p } }));
 }
 
+/** Everything worth syncing or backing up: never the sync token or the in-progress slip. */
+export function shareable(s: AppState = getSnapshot()): AppState {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { sync, slip, ...rest } = s;
+  return rest as AppState;
+}
+
 export function exportData(): string {
-  return JSON.stringify(getSnapshot(), null, 2);
+  return JSON.stringify(shareable(), null, 2);
+}
+
+export const getState = () => getSnapshot();
+
+export function setSync(p: Partial<NonNullable<AppState["sync"]>> | null) {
+  const s = getSnapshot();
+  cache = { ...s, sync: p === null ? undefined : { ...(s.sync ?? {}), ...p } };
+  persist();
+  emit();
+}
+
+/** Combine two copies of the data (this device + the synced copy) without losing anything. */
+export function mergeStates(local: AppState, remote: Partial<AppState>): AppState {
+  const r = normalise({ ...remote, ackAt: local.ackAt });
+  const deleted = [...new Set([...(local.deleted ?? []), ...(r.deleted ?? [])])];
+  const gone = new Set(deleted);
+  const union = <T extends { id: string }>(a: T[], b: T[], pick: (x: T, y: T) => T) => {
+    const map = new Map<string, T>();
+    for (const x of a) if (!gone.has(x.id)) map.set(x.id, x);
+    for (const y of b) {
+      if (gone.has(y.id)) continue;
+      const x = map.get(y.id);
+      map.set(y.id, x ? pick(x, y) : y);
+    }
+    return [...map.values()];
+  };
+  const betRank = (b: Bet) => (b.status === "open" ? 0 : 1);
+  const bets = union(local.bets, r.bets, (x, y) =>
+    betRank(y) > betRank(x) || (betRank(y) === betRank(x) && (y.settledAt ?? "") > (x.settledAt ?? "")) ? y : x
+  ).sort((a, b) => b.placedAt.localeCompare(a.placedAt));
+  const newer = (r.updatedAt ?? "") > (local.updatedAt ?? "") ? r : local;
+  return {
+    ...local,
+    bets,
+    notes: union(local.notes, r.notes, (x) => x).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    adjustments: union(local.adjustments, r.adjustments, (x) => x),
+    deleted,
+    settings: newer.settings,
+    startingBankroll: newer.startingBankroll,
+    learningSince: newer.learningSince,
+    updatedAt: newer.updatedAt,
+  };
+}
+
+export function replaceState(next: AppState) {
+  cache = next;
+  persist();
+  emit();
 }
 
 export function importData(json: string): { ok: boolean; error?: string } {
@@ -232,7 +292,13 @@ export function importData(json: string): { ok: boolean; error?: string } {
 }
 
 export function eraseAll() {
-  cache = fresh(getSnapshot().ackAt);
+  const s = getSnapshot();
+  cache = {
+    ...fresh(s.ackAt),
+    sync: s.sync,
+    updatedAt: new Date().toISOString(),
+    deleted: [...(s.deleted ?? []), ...s.bets.map((b) => b.id), ...s.notes.map((n) => n.id), ...s.adjustments.map((a) => a.id)],
+  };
   persist();
   emit();
 }
@@ -292,11 +358,22 @@ export function placeSlip(stake: number): string | null {
   return bet.id;
 }
 
-/** Settles legs from final results, updates the bet, and feeds the learning stats. */
-export function applyResults(results: Record<string, Leg["result"]>, settle: (key: string, r: NonNullable<Leg["result"]>) => boolean): number {
+type LegResult = {
+  home: number;
+  away: number;
+  htHome: number;
+  htAway: number;
+  corners: number;
+  missing?: ("ht" | "corners")[];
+};
+
+/** Settles legs from final results (or "void" for postponed/cancelled) and updates each bet. */
+export function applyResults(
+  results: Record<string, LegResult | "void">,
+  settle: (key: string, r: LegResult) => "won" | "lost" | "void"
+): number {
   let changed = 0;
   update((s) => {
-    const learning = { ...(s.learning ?? {}) };
     const bets = s.bets.map((b) => {
       if (!b.legs || b.status !== "open") return b;
       let touched = false;
@@ -304,10 +381,15 @@ export function applyResults(results: Record<string, Leg["result"]>, settle: (ke
         const r = results[l.fixtureId];
         if (l.status !== "open" || !r) return l;
         touched = true;
-        const won = settle(l.key, r);
-        const stat = (learning[l.key] ??= { n: 0, wins: 0, expected: 0 });
-        learning[l.key] = { n: stat.n + 1, wins: stat.wins + (won ? 1 : 0), expected: stat.expected + l.prob };
-        return { ...l, status: (won ? "won" : "lost") as Leg["status"], result: r, learned: true };
+        if (r === "void") return { ...l, status: "void" as const };
+        const score = {
+          home: r.home,
+          away: r.away,
+          htHome: r.htHome,
+          htAway: r.htAway,
+          corners: r.missing?.includes("corners") ? undefined : r.corners,
+        };
+        return { ...l, status: settle(l.key, r), result: score };
       });
       if (!touched) return b;
       changed++;
@@ -323,9 +405,18 @@ export function applyResults(results: Record<string, Leg["result"]>, settle: (ke
         settledAt: status === "open" ? undefined : new Date().toISOString(),
       } as Bet;
     });
-    return { ...s, bets, learning };
+    return { ...s, bets };
   });
   return changed;
 }
 
-export const resetLearning = () => update((s) => ({ ...s, learning: {} }));
+/** Replace an estimated price with the one your bookmaker actually offers. */
+export function setLegOdds(id: string, odds: number) {
+  update((s) => ({
+    ...s,
+    slip: (s.slip ?? []).map((l) => (l.id === id ? { ...l, odds, priced: true } : l)),
+  }));
+}
+
+/** Learning only counts slips placed after this moment. */
+export const resetLearning = () => update((s) => ({ ...s, learningSince: new Date().toISOString() }));

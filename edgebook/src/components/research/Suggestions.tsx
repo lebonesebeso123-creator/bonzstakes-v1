@@ -103,7 +103,7 @@ export function SlipBuilder({ matches }: { matches: AnalysedMatch[] }) {
       <h2 className="flex items-center gap-2 font-mono text-sm font-semibold">
         <Sparkles size={16} aria-hidden className="text-accent" /> Build a slip for me
       </h2>
-      <p className="hint">Pick the total odds you want. BonzStakes finds the combination most likely to land.</p>
+      <p className="hint">Pick the total odds you want. BonzStakes finds the most likely combination that reaches them.</p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Target odds">
         {TARGETS.map((v) => (
@@ -148,6 +148,11 @@ export function SlipBuilder({ matches }: { matches: AnalysedMatch[] }) {
               <div className="num text-lg font-semibold text-accent">{(slip.chance * 100).toFixed(0)}%</div>
             </div>
           </div>
+          <p className="hint text-center">
+            Expected value {slip.legs.reduce((a, l) => a * l.prob * l.odds, 1) - 1 >= 0 ? "+" : "−"}
+            {Math.abs((slip.legs.reduce((a, l) => a * l.prob * l.odds, 1) - 1) * 100).toFixed(0)}%
+            {slip.legs.some((l) => !l.priced) && " · some prices estimated"}
+          </p>
           {!slip.reached && <p className="mt-2 text-xs text-warn">Not enough strong picks to reach {t.toFixed(2)}. Add markets or widen the time frame.</p>}
           <ul className="mt-3 divide-y" style={{ borderColor: "var(--border)" }}>
             {slip.legs.map((p) => {

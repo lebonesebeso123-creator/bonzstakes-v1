@@ -18,6 +18,7 @@ export function legFrom(p: Pick, f: Fixture) {
     key: p.key,
     selection: p.label,
     odds: p.odds,
+    priced: p.priced,
     prob: p.prob,
     modelProb: p.modelProb,
   };
@@ -45,10 +46,14 @@ export default function PickButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      aria-label={`${active ? "Remove" : "Add"} ${pick.label} at ${pick.odds.toFixed(2)} ${active ? "from" : "to"} bet slip`}
+      aria-label={`${active ? "Remove" : "Add"} ${pick.label} at ${pick.priced ? "" : "estimated "}${pick.odds.toFixed(2)} ${active ? "from" : "to"} bet slip`}
+      title={pick.priced ? undefined : "No bookmaker price yet: estimated. Enter Betway's price on your slip."}
       className={`odds-btn ${compact ? "min-w-[4.25rem] !min-h-10" : "min-w-[4.75rem]"}`}
     >
-      <span className="num text-[14px] font-semibold">{pick.odds.toFixed(2)}</span>
+      <span className="num text-[14px] font-semibold">
+        {!pick.priced && <span className="mr-0.5 text-[11px] font-medium opacity-60">≈</span>}
+        {pick.odds.toFixed(2)}
+      </span>
       {active ? <Check size={14} strokeWidth={2.5} aria-hidden /> : <Plus size={14} strokeWidth={2.5} aria-hidden />}
     </button>
   );

@@ -12,6 +12,7 @@ import Gate from "@/components/Gate";
 import Footer from "@/components/Footer";
 import Toaster from "@/components/Toaster";
 import SlipBar from "@/components/research/SlipBar";
+import SyncAgent from "@/components/SyncAgent";
 
 export const metadata: Metadata = {
   title: {
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </main>
         <Footer />
         <SlipBar />
+        <SyncAgent />
         <Toaster />
       </body>
     </html>

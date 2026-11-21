@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { Download, Upload } from "lucide-react";
 import { Field, Stat } from "@/components/ui";
+import { DataSourceCard, SyncCard } from "@/components/AccountExtras";
 import { toast } from "@/components/Toaster";
 import {
   addAdjustment,
@@ -115,6 +116,9 @@ export default function AccountPage() {
           </Field>
         </div>
       </section>
+
+      <DataSourceCard />
+      <SyncCard />
 
       <section className="mb-8" aria-labelledby="dat">
         <h2 id="dat" className="h-section mb-3">Your data</h2>

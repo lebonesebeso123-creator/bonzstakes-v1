@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, Database, RefreshCw, Search } from "lucide-react";
+import { AlertTriangle, ChevronDown, Database, RefreshCw, Search, Wifi } from "lucide-react";
+import Link from "next/link";
 import { Tabs } from "@/components/ui";
 import MatchCard from "@/components/research/MatchCard";
 import { SlipBuilder, Suggestions } from "@/components/research/Suggestions";
 import { useAppState, useHydrated } from "@/lib/store";
-import { dataProvider } from "@/lib/research/data";
+import { getProvider } from "@/lib/research/provider";
 import {
   AnalysedMatch,
   LeagueGroup,
@@ -15,6 +16,7 @@ import {
   analyseFixture,
   groupByLeague,
   leagueGoalAverages,
+  learningFrom,
   rangeFor,
 } from "@/lib/research/engine";
 import { MARKET_GROUPS, MarketGroup } from "@/lib/research/markets";
@@ -26,6 +28,17 @@ interface RunResult {
   leagues: LeagueGroup[];
   tf: TimeFrame;
   at: number;
+  demo: boolean;
+  oddsUpdated?: string;
+  priced: number;
+}
+
+function ago(iso: string) {
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  return h < 48 ? `${h}h ago` : `${Math.round(h / 24)} days ago`;
 }
 
 /* Kept outside React so results survive moving between pages. */
@@ -37,7 +50,7 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 type Sort = "kickoff" | "likely" | "value";
 
 const topProb = (m: AnalysedMatch) => Math.max(0, ...m.best.map((p) => p.prob));
-const topEdge = (m: AnalysedMatch) => Math.max(-1, ...m.options.filter((o) => o.prob >= 0.35).map((p) => p.edge));
+const topEdge = (m: AnalysedMatch) => Math.max(-1, ...m.options.filter((o) => o.prob >= 0.35).map((p) => p.edge ?? -1));
 
 function MatchesView({ leagues, slip }: { leagues: LeagueGroup[]; slip: Map<string, string> }) {
   const [query, setQuery] = useState("");
@@ -160,7 +173,10 @@ export default function ResearchPage() {
   const [editing, setEditing] = useState(!lastRun);
 
   const slip = useMemo(() => new Map((state.slip ?? []).map((l) => [l.fixtureId, l.key])), [state.slip]);
-  const learned = useMemo(() => Object.values(state.learning ?? {}).reduce((a, s) => a + s.n, 0), [state.learning]);
+  const learning = useMemo(() => learningFrom(state.bets, state.learningSince), [state.bets, state.learningSince]);
+  const learned = useMemo(() => Object.values(learning).reduce((a, s) => a + s.n, 0), [learning]);
+  const provider = getProvider(state.settings.dataUrl);
+  const [error, setError] = useState<string | null>(null);
 
   const toggle = (g: MarketGroup) =>
     setGroups((cur) => (cur.includes(g) ? (cur.length > 1 ? cur.filter((x) => x !== g) : cur) : [...cur, g]));
@@ -168,9 +184,21 @@ export default function ResearchPage() {
   async function run() {
     const started = performance.now();
     lastFilters = { tf, groups };
+    setError(null);
+    if (typeof navigator !== "undefined" && !navigator.onLine && !provider.isDemo) {
+      setError("You're offline. Connect to the internet to load live matches.");
+      return;
+    }
     setProgress({ label: "Finding fixtures", pct: 5 });
     const { from, to } = rangeFor(tf);
-    const fixtures = await dataProvider.getFixtures(from, to);
+    let fixtures;
+    try {
+      fixtures = await provider.getFixtures(from, to);
+    } catch (e) {
+      setProgress(null);
+      setError(e instanceof Error ? e.message : "Couldn't load matches.");
+      return;
+    }
     const avg = leagueGoalAverages(fixtures);
     const byLeague = new Map<string, typeof fixtures>();
     fixtures.forEach((f) => byLeague.set(f.league.id, [...(byLeague.get(f.league.id) ?? []), f]));
@@ -180,7 +208,8 @@ export default function ResearchPage() {
       setProgress({ label: `Analysing ${list[0].league.name} · ${list[0].league.country}`, pct: 10 + (80 * i++) / byLeague.size });
       await tick();
       for (const f of list) {
-        const m = analyseFixture(f, groups, state.learning, avg[f.league.id]);
+        if (f.status === "POSTPONED" || f.status === "CANCELLED") continue;
+        const m = analyseFixture(f, groups, learning, avg[f.league.id]);
         if (m) matches.push(m);
       }
     }
@@ -188,7 +217,16 @@ export default function ResearchPage() {
     // keep the progress visible long enough to read, never longer
     const left = 450 - (performance.now() - started);
     if (left > 0) await new Promise((r) => setTimeout(r, left));
-    const r: RunResult = { matches, leagues: groupByLeague(matches), tf, at: Date.now() };
+    const updates = fixtures.map((f) => f.oddsUpdated).filter(Boolean) as string[];
+    const r: RunResult = {
+      matches,
+      leagues: groupByLeague(matches),
+      tf,
+      at: Date.now(),
+      demo: provider.isDemo,
+      oddsUpdated: updates.sort().at(-1),
+      priced: fixtures.filter((f) => Object.keys(f.odds).length > 0).length,
+    };
     lastRun = r;
     setResult(r);
     setProgress(null);
@@ -205,9 +243,13 @@ export default function ResearchPage() {
           <h1 className="h-page">Research</h1>
           <p className="mt-1 text-sm text-muted">Pick a time frame and markets. BonzStakes scans every match for you.</p>
         </div>
-        {dataProvider.isDemo && (
-          <span className="demo-pill" title="Sample matches and odds until a live data source is connected">
+        {provider.isDemo ? (
+          <Link href="/account#data-source" className="demo-pill" title="Sample matches and odds. Connect live data in Account.">
             <Database size={13} aria-hidden /> Demo data
+          </Link>
+        ) : (
+          <span className="live-pill">
+            <Wifi size={13} aria-hidden /> Live
           </span>
         )}
       </div>
@@ -273,10 +315,25 @@ export default function ResearchPage() {
         </div>
       )}
 
+      {error && !progress && (
+        <div className="card-pad mt-4 flex items-start gap-3" role="alert">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-warn" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm">{error}</p>
+            <div className="mt-2 flex gap-2">
+              <button className="btn-secondary btn-sm" onClick={run}>Try again</button>
+              <Link href="/account#data-source" className="btn-ghost btn-sm">Data settings</Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {result && !progress && (
         <div className="mt-6">
           <p className="num mb-3 text-[13px] text-muted" aria-live="polite">
-            {result.matches.length} matches · {result.leagues.length} leagues · {TIME_FRAMES.find((t) => t.id === result.tf)?.label}
+            {result.matches.length} matches · {result.leagues.length} leagues
+            {result.oddsUpdated && <> · odds {ago(result.oddsUpdated)}</>}
+            {!result.demo && result.priced < result.matches.length && <> · {result.matches.length - result.priced} without prices</>}
             {stale && <span className="text-warn"> · filters changed, tap Research again</span>}
           </p>
 

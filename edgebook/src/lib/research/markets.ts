@@ -26,6 +26,8 @@ export interface MatchResult {
   htHome: number;
   htAway: number;
   corners: number;
+  /** data the source didn't provide; selections that need it are voided */
+  missing?: ("ht" | "corners")[];
 }
 
 export interface SelectionDef {
@@ -125,4 +127,51 @@ export function probsFromRates(lh: number, la: number, corners: number): Record<
     p[`cOver${line}`] = 1 - under;
   }
   return p;
+}
+
+/** Outcome sets that together cover every result, so their prices can have the margin removed. */
+export const COMPLEMENTS: string[][] = [
+  ["home", "draw", "away"],
+  ["bttsYes", "bttsNo"],
+  ["over1.5", "under1.5"],
+  ["over2.5", "under2.5"],
+  ["over3.5", "under3.5"],
+  ["cOver8.5", "cUnder8.5"],
+  ["cOver9.5", "cUnder9.5"],
+  ["cOver10.5", "cUnder10.5"],
+  ["htBttsYes", "htBttsNo"],
+  ["htOver0.5", "htUnder0.5"],
+];
+
+/** Assumed margin on prices that can't be normalised against their complement. */
+export const TYPICAL_MARGIN = 1.06;
+
+/**
+ * The bookmaker's margin-free probability for every priced selection.
+ * Complete outcome sets are normalised; double chance is rebuilt from 1X2; anything else
+ * gets a typical margin removed.
+ */
+export function fairFromOdds(odds: Record<string, number | undefined>): Record<string, number> {
+  const out: Record<string, number> = {};
+  const done = new Set<string>();
+  for (const set of COMPLEMENTS) {
+    if (!set.every((k) => odds[k] && odds[k]! > 1)) continue;
+    const raw = set.map((k) => 1 / odds[k]!);
+    const sum = raw.reduce((a, b) => a + b, 0);
+    set.forEach((k, i) => {
+      out[k] = raw[i] / sum;
+      done.add(k);
+    });
+  }
+  if (out.home !== undefined) {
+    out.dc1X = out.home + out.draw;
+    out.dcX2 = out.away + out.draw;
+    out.dc12 = out.home + out.away;
+    ["dc1X", "dcX2", "dc12"].forEach((k) => done.add(k));
+  }
+  for (const [k, o] of Object.entries(odds)) {
+    if (done.has(k) || !o || o <= 1) continue;
+    out[k] = Math.min(0.97, 1 / (o * TYPICAL_MARGIN));
+  }
+  return out;
 }
