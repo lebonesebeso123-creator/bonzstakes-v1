@@ -11,6 +11,7 @@ import { bankrollOf, bankrollSeries, betProfit, breakdown, calibration, maxDrawd
 import { dateShort, money, pct, signedPct } from "@/lib/format";
 import { parseOdds } from "@/lib/odds";
 import { Bet, Sport } from "@/lib/types";
+import { LearningCard, LegList, ResultChecker } from "@/components/research/BetLegs";
 
 type Tab = "open" | "history" | "performance";
 
@@ -55,11 +56,14 @@ function BetCard({ bet, currency }: { bet: Bet; currency: string }) {
         </div>
       </div>
 
+      {bet.legs && bet.legs.length > 1 && <LegList legs={bet.legs} />}
+      {bet.legs && bet.legs.length === 1 && bet.legs[0].result && <LegList legs={bet.legs} />}
+
       {(bet.modelProb !== undefined || bet.note) && (
         <p className="num mt-2 text-xs text-muted">
           {bet.modelProb !== undefined && (
             <>
-              Model {pct(bet.modelProb)}
+              {bet.legs ? "Estimated chance" : "Model"} {pct(bet.modelProb, bet.modelProb < 0.1 ? 1 : 0)}
               {bet.fairProb !== undefined && <> · market {pct(bet.fairProb)}</>}
             </>
           )}
@@ -68,7 +72,9 @@ function BetCard({ bet, currency }: { bet: Bet; currency: string }) {
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {bet.status === "open" ? (
+        {bet.status === "open" && bet.legs ? (
+          <span className="text-xs text-muted">Settles automatically when results are in</span>
+        ) : bet.status === "open" ? (
           <>
             <button className="btn-primary btn-sm" onClick={() => { settleBet(bet.id, "won"); toast("Marked as won"); }}>
               Won
@@ -80,7 +86,7 @@ function BetCard({ bet, currency }: { bet: Bet; currency: string }) {
               Void
             </button>
           </>
-        ) : (
+        ) : bet.legs ? null : (
           <button className="btn-secondary btn-sm" onClick={() => settleBet(bet.id, "open")}>
             <Undo2 size={14} aria-hidden /> Reopen
           </button>
@@ -151,11 +157,14 @@ function Performance() {
 
   if (sum.settled === 0)
     return (
+      <div className="space-y-4">
+      <LearningCard />
       <EmptyState
         icon={<Receipt size={28} />}
         title="Nothing to measure yet"
         body="Settle a few paper bets and your bankroll curve, ROI and model scorecard will build up here."
       />
+      </div>
     );
 
   return (
@@ -175,6 +184,8 @@ function Performance() {
         <Stat label="Max drawdown" value={pct(dd)} sub="Peak-to-trough" />
         <Stat label="Streaks" value={`${sum.maxWinStreak}W · ${sum.maxLossStreak}L`} sub="Longest runs" />
       </div>
+
+      <LearningCard />
 
       <div className="card-pad">
         <h2 className="mb-1 font-mono text-sm font-semibold">Did you beat the closing line?</h2>
@@ -242,7 +253,7 @@ export default function BetsPage() {
 
   return (
     <div>
-      <h1 className="h-page">Paper bets</h1>
+      <h1 className="h-page">Bets</h1>
       <p className="mt-1 mb-5 text-sm text-muted">Virtual stakes only. Track your decisions honestly and let the numbers speak.</p>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -263,13 +274,14 @@ export default function BetsPage() {
         ]}
       />
 
+      {tab === "open" && <ResultChecker />}
       {tab === "open" &&
         (open.length === 0 ? (
           <EmptyState
             icon={<Receipt size={28} />}
             title="No open bets"
-            body="Analyse a match, enter bookmaker odds and tap “Paper bet” on a selection you like."
-            action={<Link href="/" className="btn-primary">Analyse a match</Link>}
+            body="Research the weekend’s matches, add picks to your slip and place a paper bet."
+            action={<Link href="/" className="btn-primary">Research matches</Link>}
           />
         ) : (
           <ul className="space-y-3">

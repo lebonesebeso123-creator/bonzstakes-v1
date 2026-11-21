@@ -103,7 +103,7 @@ function AnalysisCard({ a }: { a: SavedAnalysis }) {
       </div>
       <ResultForm key={a.updatedAt + String(!!a.result)} a={a} />
       <div className="mt-3 flex gap-2">
-        <Link href={`/?load=${a.id}`} className="btn-primary btn-sm">Open</Link>
+        <Link href={`/analyse?load=${a.id}`} className="btn-primary btn-sm">Open</Link>
         <button
           className="btn-ghost btn-sm ml-auto"
           aria-label={`Delete analysis ${a.title}`}
@@ -160,7 +160,7 @@ export default function JournalPage() {
             icon={<FileSearch size={28} />}
             title="No saved analyses"
             body="Analyse a match and tap “Save to Journal”. Later, record the final score to see how the model did."
-            action={<Link href="/" className="btn-primary">Analyse a match</Link>}
+            action={<Link href="/" className="btn-primary">Research matches</Link>}
           />
         ) : (
           <>

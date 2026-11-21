@@ -8,6 +8,14 @@ whether your edge is real. No accounts, no tracking, no real money. Everything i
 
 ## Features
 
+- **Research (home page)**: choose a time frame (today → next 7 days) and markets (1X2, double chance,
+  BTTS, total goals, corners, 1st-half BTTS/goals, combos). One tap scans every match, grouped by league
+  (biggest first), with the best pick per market, "Most likely" and "Value vs the odds" suggestions, and a
+  slip builder that hits your target odds with the highest combined probability.
+- **Bet slip**: one pick per match (combo picks count as one), total odds, stake, placed straight to Bets.
+  Selections settle automatically from results, and each market's hit rate feeds back into future estimates.
+- **Data**: runs on built-in demo data. To go live, implement `DataProvider` in `src/lib/research/data.ts`.
+
 - **Football**: weighted recent form (home/away and opposition-adjusted) → expected goals →
   Poisson + Dixon–Coles → 1X2, over/under ladder, BTTS, double chance, exact-score grid.
 - **Basketball**: moneyline, point spread and totals from scoring/defence and home-court advantage.

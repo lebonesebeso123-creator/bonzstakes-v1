@@ -11,6 +11,7 @@ import Nav from "@/components/Nav";
 import Gate from "@/components/Gate";
 import Footer from "@/components/Footer";
 import Toaster from "@/components/Toaster";
+import SlipBar from "@/components/research/SlipBar";
 
 export const metadata: Metadata = {
   title: {
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f172a",
+  themeColor: "#070b16",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
         <Footer />
+        <SlipBar />
         <Toaster />
       </body>
     </html>

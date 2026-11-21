@@ -233,7 +233,7 @@ export function Modal({
         aria-labelledby={id}
         onClick={(e) => e.stopPropagation()}
         className="card max-h-[92vh] w-full overflow-y-auto rounded-b-none p-5 shadow-2xl outline-none sm:max-w-md sm:rounded-b-[14px]"
-        style={{ background: "#111a2e" }}
+        style={{ background: "rgba(14,20,36,0.94)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
       >
         <h2 id={id} className="mb-4 font-mono text-lg font-semibold">
           {title}

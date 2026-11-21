@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, BookOpen, Receipt, Wallet } from "lucide-react";
+import { Activity, BookOpen, Receipt, Search, Wallet } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { bankrollOf } from "@/lib/stats";
 import { money } from "@/lib/format";
 
 const links = [
-  { href: "/", label: "Analyse", Icon: Activity },
+  { href: "/", label: "Research", Icon: Search },
+  { href: "/analyse", label: "Analyse", Icon: Activity },
   { href: "/bets", label: "Bets", Icon: Receipt },
   { href: "/journal", label: "Journal", Icon: BookOpen },
   { href: "/account", label: "Account", Icon: Wallet },
@@ -26,7 +27,7 @@ export default function Nav() {
         className="sticky top-0 z-40 border-b backdrop-blur-xl"
         style={{
           borderColor: "var(--border)",
-          background: "rgba(15,23,42,0.8)",
+          background: "rgba(7,11,22,0.72)",
           paddingTop: "env(safe-area-inset-top, 0px)",
         }}
       >
@@ -72,11 +73,11 @@ export default function Nav() {
         className="fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur-xl md:hidden"
         style={{
           borderColor: "var(--border)",
-          background: "rgba(15,23,42,0.92)",
+          background: "rgba(7,11,22,0.82)",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
-        <ul className="mx-auto grid max-w-md grid-cols-4">
+        <ul className="mx-auto grid max-w-md grid-cols-5">
           {links.map(({ href, label, Icon }) => (
             <li key={href}>
               <Link

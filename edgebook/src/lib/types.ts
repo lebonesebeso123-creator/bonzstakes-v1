@@ -103,6 +103,27 @@ export interface SavedAnalysis {
 
 export type BetStatus = "open" | "won" | "lost" | "void";
 
+/** One selection on a slip. One per match; combo picks count as one selection. */
+export interface Leg {
+  id: string;
+  fixtureId: string;
+  home: string;
+  away: string;
+  league: string;
+  kickoff: string;
+  group: string;
+  key: string;
+  selection: string;
+  odds: number;
+  /** BonzStakes estimate when added */
+  prob: number;
+  modelProb?: number;
+  status: BetStatus;
+  result?: { home: number; away: number; htHome: number; htAway: number; corners: number };
+  /** already counted in the learning stats */
+  learned?: boolean;
+}
+
 export interface Bet {
   id: string;
   analysisId?: string;
@@ -119,6 +140,8 @@ export interface Bet {
   modelProb?: number;
   fairProb?: number;
   note?: string;
+  /** present for slips built on the Research page (singles have one leg) */
+  legs?: Leg[];
 }
 
 export interface Adjustment {
@@ -152,4 +175,8 @@ export interface AppState {
   analyses: SavedAnalysis[];
   notes: Note[];
   settings: Settings;
+  /** selections waiting on the bet slip */
+  slip?: Leg[];
+  /** per selection key: picks settled, wins, and the expected wins */
+  learning?: Record<string, { n: number; wins: number; expected: number }>;
 }

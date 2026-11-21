@@ -8,6 +8,7 @@ import {
   SavedAnalysis,
   Settings,
   AnalysisResult,
+  Leg,
 } from "./types";
 import { uid } from "./format";
 
@@ -30,6 +31,8 @@ function fresh(ack: string | null): AppState {
     analyses: [],
     notes: [],
     settings: { ...DEFAULT_SETTINGS },
+    slip: [],
+    learning: {},
   };
 }
 
@@ -50,6 +53,8 @@ function normalise(raw: Partial<AppState>): AppState {
     analyses: Array.isArray(raw.analyses) ? raw.analyses : [],
     notes: Array.isArray(raw.notes) ? raw.notes : [],
     settings: { ...DEFAULT_SETTINGS, ...(raw.settings ?? {}) },
+    slip: Array.isArray(raw.slip) ? raw.slip : [],
+    learning: raw.learning && typeof raw.learning === "object" ? raw.learning : {},
     startingBankroll:
       typeof raw.startingBankroll === "number" && raw.startingBankroll >= 0
         ? raw.startingBankroll
@@ -255,3 +260,96 @@ export function eraseAll() {
   persist();
   emit();
 }
+
+/* ---------- bet slip (Research page) ---------- */
+
+/** Adds a leg. One per match: a second pick on the same match replaces the first. */
+export function addToSlip(leg: Omit<Leg, "id" | "status">): "added" | "replaced" | "removed" {
+  let outcome: "added" | "replaced" | "removed" = "added";
+  update((s) => {
+    const slip = s.slip ?? [];
+    const existing = slip.find((l) => l.fixtureId === leg.fixtureId);
+    if (existing && existing.key === leg.key) {
+      outcome = "removed";
+      return { ...s, slip: slip.filter((l) => l.id !== existing.id) };
+    }
+    const next: Leg = { ...leg, id: uid(), status: "open" };
+    if (existing) {
+      outcome = "replaced";
+      return { ...s, slip: slip.map((l) => (l.id === existing.id ? next : l)) };
+    }
+    return { ...s, slip: [...slip, next] };
+  });
+  return outcome;
+}
+
+export const removeFromSlip = (id: string) =>
+  update((s) => ({ ...s, slip: (s.slip ?? []).filter((l) => l.id !== id) }));
+
+export const clearSlip = () => update((s) => ({ ...s, slip: [] }));
+
+export function replaceSlip(legs: Omit<Leg, "id" | "status">[]) {
+  update((s) => ({ ...s, slip: legs.map((l) => ({ ...l, id: uid(), status: "open" as const })) }));
+}
+
+export const slipOdds = (legs: Leg[]) =>
+  Math.round(legs.reduce((a, l) => a * (l.status === "void" ? 1 : l.odds), 1) * 100) / 100;
+
+/** Turns the slip into a paper bet. Returns the bet id. */
+export function placeSlip(stake: number): string | null {
+  const s = getSnapshot();
+  const legs = s.slip ?? [];
+  if (!legs.length || !(stake > 0)) return null;
+  const odds = slipOdds(legs);
+  const single = legs.length === 1;
+  const bet = addBet({
+    sport: "football",
+    matchLabel: single ? `${legs[0].home} v ${legs[0].away}` : `${legs.length}-fold accumulator`,
+    market: single ? legs[0].group : "Accumulator",
+    selection: single ? legs[0].selection : legs.map((l) => l.selection).join(" · "),
+    odds,
+    stake,
+    modelProb: legs.reduce((a, l) => a * l.prob, 1),
+    legs: legs.map((l) => ({ ...l })),
+  });
+  clearSlip();
+  return bet.id;
+}
+
+/** Settles legs from final results, updates the bet, and feeds the learning stats. */
+export function applyResults(results: Record<string, Leg["result"]>, settle: (key: string, r: NonNullable<Leg["result"]>) => boolean): number {
+  let changed = 0;
+  update((s) => {
+    const learning = { ...(s.learning ?? {}) };
+    const bets = s.bets.map((b) => {
+      if (!b.legs || b.status !== "open") return b;
+      let touched = false;
+      const legs = b.legs.map((l) => {
+        const r = results[l.fixtureId];
+        if (l.status !== "open" || !r) return l;
+        touched = true;
+        const won = settle(l.key, r);
+        const stat = (learning[l.key] ??= { n: 0, wins: 0, expected: 0 });
+        learning[l.key] = { n: stat.n + 1, wins: stat.wins + (won ? 1 : 0), expected: stat.expected + l.prob };
+        return { ...l, status: (won ? "won" : "lost") as Leg["status"], result: r, learned: true };
+      });
+      if (!touched) return b;
+      changed++;
+      const anyLost = legs.some((l) => l.status === "lost");
+      const allDone = legs.every((l) => l.status !== "open");
+      const allVoid = legs.every((l) => l.status === "void");
+      const status = anyLost ? "lost" : allDone ? (allVoid ? "void" : "won") : "open";
+      return {
+        ...b,
+        legs,
+        odds: slipOdds(legs),
+        status,
+        settledAt: status === "open" ? undefined : new Date().toISOString(),
+      } as Bet;
+    });
+    return { ...s, bets, learning };
+  });
+  return changed;
+}
+
+export const resetLearning = () => update((s) => ({ ...s, learning: {} }));
