@@ -34,6 +34,91 @@ let lastFilters: { tf: TimeFrame; groups: MarketGroup[] } = { tf: "weekend", gro
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
+type Sort = "kickoff" | "likely" | "value";
+
+const topProb = (m: AnalysedMatch) => Math.max(0, ...m.best.map((p) => p.prob));
+const topEdge = (m: AnalysedMatch) => Math.max(-1, ...m.options.filter((o) => o.prob >= 0.35).map((p) => p.edge));
+
+function MatchesView({ leagues, slip }: { leagues: LeagueGroup[]; slip: Map<string, string> }) {
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<Sort>("kickoff");
+  const [valueOnly, setValueOnly] = useState(false);
+  const q = query.trim().toLowerCase();
+  const filtering = q !== "" || valueOnly;
+
+  const shown = useMemo(() => {
+    const out: LeagueGroup[] = [];
+    for (const g of leagues) {
+      const leagueHit = q !== "" && `${g.name} ${g.country}`.toLowerCase().includes(q);
+      let ms = g.matches.filter(
+        (m) =>
+          (q === "" || leagueHit || `${m.fixture.home} ${m.fixture.away}`.toLowerCase().includes(q)) &&
+          (!valueOnly || topEdge(m) >= 0.02)
+      );
+      if (sort === "likely") ms = [...ms].sort((a, b) => topProb(b) - topProb(a));
+      if (sort === "value") ms = [...ms].sort((a, b) => topEdge(b) - topEdge(a));
+      if (ms.length) out.push({ ...g, matches: ms });
+    }
+    return out;
+  }, [leagues, q, sort, valueOnly]);
+
+  const count = shown.reduce((a, g) => a + g.matches.length, 0);
+
+  return (
+    <div>
+      <div className="mb-4 space-y-2.5">
+        <div className="relative">
+          <Search size={16} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <input
+            type="search"
+            className="input !pl-9"
+            placeholder="Search a team or league"
+            aria-label="Search a team or league"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            enterKeyHint="search"
+            autoCapitalize="none"
+            autoCorrect="off"
+          />
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="scroll-row !mx-0 !px-0 !pb-0" role="group" aria-label="Sort matches">
+            {(
+              [
+                ["kickoff", "Kick-off"],
+                ["likely", "Most likely"],
+                ["value", "Best value"],
+              ] as [Sort, string][]
+            ).map(([v, l]) => (
+              <button key={v} className="chip shrink-0" aria-pressed={sort === v} onClick={() => setSort(v)}>
+                {l}
+              </button>
+            ))}
+          </div>
+          <button className="chip shrink-0" aria-pressed={valueOnly} onClick={() => setValueOnly((v) => !v)}>
+            Value only
+          </button>
+        </div>
+        {filtering && (
+          <p className="num text-[12px] text-muted" aria-live="polite">
+            {count} {count === 1 ? "match" : "matches"} found
+          </p>
+        )}
+      </div>
+
+      {shown.length === 0 ? (
+        <div className="card-pad text-center text-sm text-muted">Nothing matches. Clear the search or turn off Value only.</div>
+      ) : (
+        <div className="space-y-5">
+          {shown.map((g, idx) => (
+            <League key={g.key + (filtering ? ":f" : "")} g={g} slip={slip} defaultOpen={filtering || idx < 3} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function League({ g, slip, defaultOpen }: { g: LeagueGroup; slip: Map<string, string>; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -209,13 +294,7 @@ export default function ResearchPage() {
                   { value: "builder", label: "Build a slip" },
                 ]}
               />
-              {view === "matches" && (
-                <div className="space-y-5">
-                  {result.leagues.map((g, idx) => (
-                    <League key={g.key} g={g} slip={slip} defaultOpen={idx < 3} />
-                  ))}
-                </div>
-              )}
+              {view === "matches" && <MatchesView leagues={result.leagues} slip={slip} />}
               {view === "picks" && <Suggestions matches={result.matches} slip={slip} />}
               {view === "builder" && <SlipBuilder matches={result.matches} />}
             </>

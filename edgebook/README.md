@@ -1,10 +1,10 @@
 # BonzStakes
 
-A private, free **match analysis and paper-bet research journal** for football, basketball and tennis.
+A private, free **match research tool and paper-bet tracker** for football.
 
-You enter recent results and the bookmaker's odds. BonzStakes estimates probabilities with transparent
-models, shows where your view and the market disagree, and lets you track *paper* bets to find out
-whether your edge is real. No accounts, no tracking, no real money. Everything is stored in your browser.
+Pick a time frame and markets; BonzStakes scans every match, ranks the picks, finds value against the odds,
+builds slips to a target price and tracks *paper* bets so you can see whether the edge is real. No accounts,
+no real money. Everything is stored in your browser.
 
 ## Features
 
@@ -16,16 +16,11 @@ whether your edge is real. No accounts, no tracking, no real money. Everything i
   Selections settle automatically from results, and each market's hit rate feeds back into future estimates.
 - **Data**: runs on built-in demo data. To go live, implement `DataProvider` in `src/lib/research/data.ts`.
 
-- **Football**: weighted recent form (home/away and opposition-adjusted) → expected goals →
-  Poisson + Dixon–Coles → 1X2, over/under ladder, BTTS, double chance, exact-score grid.
-- **Basketball**: moneyline, point spread and totals from scoring/defence and home-court advantage.
-- **Tennis**: ranking, surface form and head-to-head heuristic.
-- **Honest uncertainty**: every probability has a range that widens with small samples; data-quality badge.
-- **Market comparison**: margin removal, edge, EV, verdicts (Value / Lean / Fair / Pass), cautious fractional-Kelly stake.
-- **Paper bets**: settle, reopen, closing-line value, bankroll curve, ROI, drawdown, by-sport/market breakdown.
-- **Model scorecard**: record final results and compare the model's log loss with the market's.
-- **Journal**: saved analyses (reopen anytime), notes with tags and search, pre-bet checklist, research links.
-- **Privacy**: local-only storage, JSON backup/restore, 18+ gate, responsible-use guidance.
+- **Model**: weighted recent form → expected goals → Poisson + Dixon–Coles, blended 30/70 with market prices.
+- **Research tools**: team/league search, sort by kick-off, most likely or best value, value-only filter,
+  recent form and research links on every match.
+- **Bets & learning**: ROI, drawdown, bankroll curve, by-market breakdown, per-market learning table.
+- **Journal**: notes with tags and search. **Privacy**: local-only storage, JSON backup/restore, 18+ gate.
 - Accessible (keyboard, screen readers, reduced motion), mobile-first, installable manifest.
 
 ## Run it

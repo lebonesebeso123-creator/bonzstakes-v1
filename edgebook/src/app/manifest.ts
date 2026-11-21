@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "BonzStakes",
     short_name: "BonzStakes",
-    description: "Match analysis and bet research journal",
+    description: "Match research and paper bet tracker",
     start_url: `${base}/`,
     scope: `${base}/`,
     display: "standalone",

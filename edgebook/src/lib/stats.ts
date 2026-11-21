@@ -1,4 +1,4 @@
-import { AppState, Bet, SavedAnalysis } from "./types";
+import { AppState, Bet } from "./types";
 
 export function betProfit(b: Bet): number {
   if (b.status === "won") return b.stake * (b.odds - 1);
@@ -115,46 +115,3 @@ export function breakdown(bets: Bet[], key: "sport" | "market") {
 }
 
 /** Compare model and market on analyses where you recorded the result. */
-export function calibration(analyses: SavedAnalysis[]) {
-  const rows = analyses
-    .filter((a) => a.result)
-    .map((a) => {
-      const r = a.result!;
-      let outcome: "home" | "draw" | "away" | null = null;
-      if (a.sport === "tennis") outcome = r.winner === "a" ? "home" : r.winner === "b" ? "away" : null;
-      else if (r.home !== undefined && r.away !== undefined)
-        outcome = r.home > r.away ? "home" : r.home < r.away ? "away" : "draw";
-      return { a, outcome };
-    })
-    .filter((x) => x.outcome !== null);
-
-  const ll = (p: number) => -Math.log(Math.max(p, 1e-6));
-  let modelLL = 0,
-    n = 0,
-    brier = 0;
-  let mLL = 0,
-    mkLL = 0,
-    nMk = 0;
-  for (const { a, outcome } of rows) {
-    const p = a.summary.probs;
-    const pOut = p[outcome as "home" | "away" | "draw"] ?? 0;
-    modelLL += ll(pOut);
-    const keys: ("home" | "draw" | "away")[] = ["home", ...(p.draw !== undefined ? (["draw"] as const) : []), "away"];
-    brier += keys.reduce((s, k) => s + Math.pow((p[k] ?? 0) - (k === outcome ? 1 : 0), 2), 0);
-    n++;
-    const f = a.summary.marketFair;
-    if (f) {
-      const fOut = f[outcome as "home" | "away" | "draw"] ?? 0;
-      mLL += ll(pOut);
-      mkLL += ll(fOut);
-      nMk++;
-    }
-  }
-  return {
-    n,
-    modelLogLoss: n ? modelLL / n : null,
-    brier: n ? brier / n : null,
-    nMarket: nMk,
-    modelVsMarket: nMk ? { model: mLL / nMk, market: mkLL / nMk } : null,
-  };
-}

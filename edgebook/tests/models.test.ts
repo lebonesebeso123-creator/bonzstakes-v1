@@ -1,8 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_FOOTBALL, parseResults, predictFootball, scoreMatrix } from "../src/lib/models/football";
-import { DEFAULT_BASKETBALL, predictBasketball } from "../src/lib/models/basketball";
-import { DEFAULT_TENNIS, predictTennis } from "../src/lib/models/tennis";
 import { expectedValue, fairProbs, kellyFraction, parseOdds, suggestStake } from "../src/lib/odds";
 
 const near = (a: number, b: number, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} !~ ${b}`);
@@ -45,25 +43,6 @@ test("incomplete rows are ignored", () => {
     predictFootball({ ...DEFAULT_FOOTBALL, homeForm: [{ gf: "", ga: "", venue: "H", opp: "avg" }], awayForm: [] }),
     null
   );
-});
-
-test("basketball: home-court edge and probability sums", () => {
-  const m = predictBasketball({
-    ...DEFAULT_BASKETBALL,
-    homeGames: "10", homeFor: "112", homeAgainst: "110",
-    awayGames: "10", awayFor: "112", awayAgainst: "110",
-    spreadLine: "-2.5", totalLine: "223.5",
-  })!;
-  assert.ok(m.probs.home > 0.5);
-  near(m.probs.home + m.probs.away, 1);
-  near(m.probs.over + m.probs.under, 1);
-});
-
-test("tennis: better ranked player favoured, needs some data", () => {
-  assert.equal(predictTennis(DEFAULT_TENNIS), null);
-  const m = predictTennis({ ...DEFAULT_TENNIS, rankA: "3", rankB: "60" })!;
-  assert.ok(m.probs.home > 0.6);
-  near(m.probs.home + m.probs.away, 1);
 });
 
 test("odds parsing", () => {

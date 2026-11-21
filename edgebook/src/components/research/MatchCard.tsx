@@ -1,7 +1,8 @@
 "use client";
 
 import { memo, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ExternalLink } from "lucide-react";
+import { FormMatch } from "@/lib/types";
 import { AnalysedMatch, Pick } from "@/lib/research/engine";
 import { MARKET_GROUPS } from "@/lib/research/markets";
 import PickButton from "./PickButton";
@@ -51,6 +52,39 @@ export function PickRow({
       <PickButton pick={pick} fixture={m.fixture} active={inSlip} />
     </li>
   );
+}
+
+function FormRow({ team, form }: { team: string; form: FormMatch[] }) {
+  const rows = form.slice(0, 6);
+  const res = rows.map((r) => (Number(r.gf) > Number(r.ga) ? "W" : Number(r.gf) === Number(r.ga) ? "D" : "L"));
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="min-w-0 truncate text-[13px]">{team}</span>
+      <span className="flex shrink-0 gap-1" aria-label={`Last ${rows.length}: ${res.join(", ")}`}>
+        {rows.map((r, i) => (
+          <span
+            key={i}
+            className="form-pill"
+            data-r={res[i]}
+            title={`${r.gf}–${r.ga} ${r.venue === "H" ? "home" : "away"}`}
+            aria-hidden
+          >
+            {res[i]}
+          </span>
+        ))}
+      </span>
+    </div>
+  );
+}
+
+function researchLinks(home: string, away: string) {
+  const q = (s: string) => `https://www.google.com/search?q=${encodeURIComponent(s)}`;
+  return [
+    { label: "Team news", href: q(`${home} vs ${away} team news injuries`) },
+    { label: "Line-ups", href: q(`${home} vs ${away} predicted lineups`) },
+    { label: "Head to head", href: q(`${home} vs ${away} head to head`) },
+    { label: "Stats", href: q(`${home} vs ${away} stats preview`) },
+  ];
 }
 
 function MatchCard({ m, slipKey }: { m: AnalysedMatch; slipKey?: string }) {
@@ -110,7 +144,14 @@ function MatchCard({ m, slipKey }: { m: AnalysedMatch; slipKey?: string }) {
       </button>
 
       {open && (
-        <div className="space-y-3 border-t px-4 py-3" style={{ borderColor: "var(--border)" }}>
+        <div className="space-y-4 border-t px-4 py-3" style={{ borderColor: "var(--border)" }}>
+          <section>
+            <h4 className="h-section mb-1.5 !text-[11px]">Form · newest first</h4>
+            <div className="space-y-1.5">
+              <FormRow team={f.home} form={f.homeForm} />
+              <FormRow team={f.away} form={f.awayForm} />
+            </div>
+          </section>
           {groups.map((g) => (
             <section key={g.id}>
               <h4 className="h-section mb-1.5 !text-[11px]">{g.label}</h4>
@@ -131,6 +172,18 @@ function MatchCard({ m, slipKey }: { m: AnalysedMatch; slipKey?: string }) {
               </ul>
             </section>
           ))}
+          <section>
+            <h4 className="h-section mb-1.5 !text-[11px]">Dig deeper</h4>
+            <div className="flex flex-wrap gap-2">
+              {researchLinks(f.home, f.away).map((l) => (
+                <a key={l.label} href={l.href} target="_blank" rel="noopener noreferrer" className="chip">
+                  {l.label}
+                  <ExternalLink size={12} aria-hidden />
+                  <span className="sr-only">(opens in a new tab)</span>
+                </a>
+              ))}
+            </div>
+          </section>
         </div>
       )}
     </article>

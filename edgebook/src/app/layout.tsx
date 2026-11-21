@@ -15,11 +15,11 @@ import SlipBar from "@/components/research/SlipBar";
 
 export const metadata: Metadata = {
   title: {
-    default: "BonzStakes · Match analysis & bet research journal",
+    default: "BonzStakes · Match research",
     template: "%s · BonzStakes",
   },
   description:
-    "Analyse football, basketball and tennis matches with transparent models, compare them with bookmaker odds, and track paper bets. Private, free, no sign-up.",
+    "Research every match in one tap: ranked picks across leagues and markets, value vs the odds, a slip builder and auto-settling paper bets. Private, free, no sign-up.",
   applicationName: "BonzStakes",
   keywords: ["bet research", "poisson model", "value betting", "paper trading", "match analysis"],
 };

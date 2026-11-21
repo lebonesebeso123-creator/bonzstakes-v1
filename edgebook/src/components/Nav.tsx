@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, BookOpen, Receipt, Search, Wallet } from "lucide-react";
+import { BookOpen, Receipt, Search, Wallet } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { bankrollOf } from "@/lib/stats";
 import { money } from "@/lib/format";
 
 const links = [
   { href: "/", label: "Research", Icon: Search },
-  { href: "/analyse", label: "Analyse", Icon: Activity },
   { href: "/bets", label: "Bets", Icon: Receipt },
   { href: "/journal", label: "Journal", Icon: BookOpen },
   { href: "/account", label: "Account", Icon: Wallet },
@@ -77,7 +76,7 @@ export default function Nav() {
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
-        <ul className="mx-auto grid max-w-md grid-cols-5">
+        <ul className="mx-auto grid max-w-md grid-cols-4">
           {links.map(({ href, label, Icon }) => (
             <li key={href}>
               <Link

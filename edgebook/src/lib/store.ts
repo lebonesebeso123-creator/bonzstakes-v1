@@ -5,9 +5,7 @@ import {
   Bet,
   BetStatus,
   Note,
-  SavedAnalysis,
   Settings,
-  AnalysisResult,
   Leg,
 } from "./types";
 import { uid } from "./format";
@@ -183,28 +181,6 @@ export function patchBet(id: string, patch: Partial<Bet>) {
 
 export const deleteBet = (id: string) =>
   update((s) => ({ ...s, bets: s.bets.filter((b) => b.id !== id) }));
-
-export function saveAnalysis(a: SavedAnalysis) {
-  update((s) => {
-    const exists = s.analyses.some((x) => x.id === a.id);
-    return {
-      ...s,
-      analyses: exists
-        ? s.analyses.map((x) => (x.id === a.id ? a : x))
-        : [a, ...s.analyses],
-    };
-  });
-}
-
-export const deleteAnalysis = (id: string) =>
-  update((s) => ({ ...s, analyses: s.analyses.filter((a) => a.id !== id) }));
-
-export function setAnalysisResult(id: string, result: AnalysisResult | undefined) {
-  update((s) => ({
-    ...s,
-    analyses: s.analyses.map((a) => (a.id === id ? { ...a, result } : a)),
-  }));
-}
 
 export function addNote(n: Omit<Note, "id" | "createdAt">) {
   update((s) => ({

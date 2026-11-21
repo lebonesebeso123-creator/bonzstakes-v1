@@ -7,15 +7,14 @@ import { Badge, EmptyState, Stat, Tabs } from "@/components/ui";
 import { LineChart } from "@/components/charts";
 import { toast } from "@/components/Toaster";
 import { deleteBet, patchBet, settleBet, useAppState } from "@/lib/store";
-import { bankrollOf, bankrollSeries, betProfit, breakdown, calibration, maxDrawdown, summarise } from "@/lib/stats";
+import { bankrollOf, bankrollSeries, betProfit, breakdown, maxDrawdown, summarise } from "@/lib/stats";
 import { dateShort, money, pct, signedPct } from "@/lib/format";
 import { parseOdds } from "@/lib/odds";
-import { Bet, Sport } from "@/lib/types";
+import { Bet } from "@/lib/types";
 import { LearningCard, LegList, ResultChecker } from "@/components/research/BetLegs";
 
 type Tab = "open" | "history" | "performance";
 
-const SPORT_LABEL: Record<Sport, string> = { football: "Football", basketball: "Basketball", tennis: "Tennis" };
 
 function BetCard({ bet, currency }: { bet: Bet; currency: string }) {
   const profit = betProfit(bet);
@@ -35,7 +34,7 @@ function BetCard({ bet, currency }: { bet: Bet; currency: string }) {
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={tone}>{bet.status === "open" ? "Open" : bet.status}</Badge>
             <span className="text-xs text-muted">
-              {SPORT_LABEL[bet.sport]} · {dateShort(bet.placedAt)}
+              {dateShort(bet.placedAt)}
             </span>
           </div>
           <h2 className="mt-1.5 truncate font-medium">{bet.matchLabel}</h2>
@@ -132,7 +131,7 @@ function Table({ title, rows, cur }: { title: string; rows: ReturnType<typeof br
       <tbody>
         {rows.map((r) => (
           <tr key={r.key} className="border-t" style={{ borderColor: "var(--border)" }}>
-            <td className="max-w-[10rem] truncate py-2 font-sans">{SPORT_LABEL[r.key as Sport] ?? r.key}</td>
+            <td className="max-w-[10rem] truncate py-2 font-sans">{r.key}</td>
             <td className="py-2 text-right">{r.n}</td>
             <td className="py-2 text-right">{r.won}</td>
             <td className={`py-2 text-right ${r.profit >= 0 ? "text-emerald-400" : "text-danger"}`}>{money(r.profit, cur, true)}</td>
@@ -151,9 +150,7 @@ function Performance() {
   const sum = useMemo(() => summarise(state.bets), [state.bets]);
   const series = useMemo(() => bankrollSeries(state), [state]);
   const dd = maxDrawdown(series);
-  const bySport = useMemo(() => breakdown(state.bets, "sport"), [state.bets]);
   const byMarket = useMemo(() => breakdown(state.bets, "market"), [state.bets]);
-  const cal = useMemo(() => calibration(state.analyses), [state.analyses]);
 
   if (sum.settled === 0)
     return (
@@ -200,35 +197,6 @@ function Performance() {
         )}
       </div>
 
-      <div className="card-pad">
-        <h2 className="mb-1 font-mono text-sm font-semibold">Model scorecard</h2>
-        {cal.n === 0 ? (
-          <p className="text-sm text-muted">
-            Record final results on saved analyses in the Journal. Once you have a few, this compares the
-            model against the bookmakers&apos; fair odds.
-          </p>
-        ) : (
-          <div className="space-y-2 text-sm">
-            <p>
-              <span className="num font-semibold">{cal.n}</span> {cal.n === 1 ? "analysis" : "analyses"} scored. Average log loss{" "}
-              <span className="num font-semibold">{cal.modelLogLoss?.toFixed(3)}</span> (lower is better; guessing evenly on a 1X2 scores 1.099).
-            </p>
-            {cal.modelVsMarket && (
-              <p>
-                On <span className="num">{cal.nMarket}</span> with odds entered: model{" "}
-                <span className="num font-semibold">{cal.modelVsMarket.model.toFixed(3)}</span> vs market{" "}
-                <span className="num font-semibold">{cal.modelVsMarket.market.toFixed(3)}</span>.{" "}
-                {cal.modelVsMarket.model < cal.modelVsMarket.market ? "The model is ahead so far." : "The market is ahead so far."}
-              </p>
-            )}
-            {cal.n < 30 && (
-              <p className="text-xs text-muted">Fewer than 30 results is too small to conclude anything. Keep logging.</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {bySport.length > 0 && <Table title="By sport" rows={bySport} cur={cur} />}
       {byMarket.length > 0 && <Table title="By market" rows={byMarket} cur={cur} />}
     </div>
   );
@@ -238,7 +206,6 @@ export default function BetsPage() {
   const state = useAppState();
   const cur = state.settings.currency;
   const [tab, setTab] = useState<Tab>("open");
-  const [sportF, setSportF] = useState<"all" | Sport>("all");
   const [resultF, setResultF] = useState<"all" | "won" | "lost" | "void">("all");
 
   const br = bankrollOf(state);
@@ -246,7 +213,6 @@ export default function BetsPage() {
   const open = state.bets.filter((b) => b.status === "open");
   const history = state.bets
     .filter((b) => b.status !== "open")
-    .filter((b) => sportF === "all" || b.sport === sportF)
     .filter((b) => resultF === "all" || b.status === resultF)
     .sort((a, b) => (b.settledAt ?? "").localeCompare(a.settledAt ?? ""));
   const historyAll = state.bets.filter((b) => b.status !== "open").length;
@@ -297,15 +263,6 @@ export default function BetsPage() {
         ) : (
           <>
             <div className="mb-4 flex flex-wrap gap-3">
-              <label className="text-xs text-muted">
-                <span className="mb-1 block">Sport</span>
-                <select className="input w-auto" value={sportF} onChange={(e) => setSportF(e.target.value as "all" | Sport)}>
-                  <option value="all">All sports</option>
-                  <option value="football">Football</option>
-                  <option value="basketball">Basketball</option>
-                  <option value="tennis">Tennis</option>
-                </select>
-              </label>
               <label className="text-xs text-muted">
                 <span className="mb-1 block">Result</span>
                 <select className="input w-auto" value={resultF} onChange={(e) => setResultF(e.target.value as typeof resultF)}>

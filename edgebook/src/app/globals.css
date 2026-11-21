@@ -210,6 +210,19 @@ button:disabled {
     border-color: var(--accent);
     color: var(--on-accent);
   }
+  .form-pill {
+    @apply flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-bold;
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--muted);
+  }
+  .form-pill[data-r="W"] {
+    background: rgba(34, 197, 94, 0.2);
+    color: #86efac;
+  }
+  .form-pill[data-r="L"] {
+    background: rgba(248, 113, 113, 0.18);
+    color: #fca5a5;
+  }
   .value-tag {
     @apply rounded px-1.5 text-[10px] font-semibold uppercase leading-4 tracking-wide;
     background: rgba(34, 197, 94, 0.16);

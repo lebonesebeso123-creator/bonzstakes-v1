@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "How it works & responsible use",
-  description: "How BonzStakes' football, basketball and tennis models work, what they can't do, and how to use them responsibly.",
+  description: "How BonzStakes researches matches, where its estimates come from, what they can't do, and how to use them responsibly.",
 };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -26,69 +26,56 @@ export default function About() {
 
       <Section title="What this is">
         <p>
-          BonzStakes is a <strong>research and journaling tool</strong>. You type in recent results and the
-          bookmaker&apos;s odds; it estimates probabilities and shows where your view and the market disagree.
-          It is not a tipster, it does not take bets, and it has no access to live fixtures or odds.
+          BonzStakes is a <strong>research tool</strong>. Pick a time frame and the markets you care about, and it
+          scans every match, ranks the picks, and helps you build and track slips. It is not a tipster and it
+          does not take bets.
         </p>
       </Section>
 
-      <Section title="Football model">
+      <Section title="Where the estimates come from">
         <p>
-          Each team&apos;s recent goals scored and conceded are compared with what a typical team would have
-          scored in the same venue and against the same level of opposition. Newer matches count more
-          (each match back is weighted 8% less). Because a handful of games is noisy, every team is blended
-          with the league average, so a 5–0 win doesn&apos;t make a team look unstoppable.
+          <strong>Form model.</strong> Each team&apos;s recent goals for and against are compared with what an
+          average team would score at the same venue against the same level of opposition. Newer matches count
+          more, and small samples are pulled toward the league average. A <strong>Poisson model with a
+          Dixon–Coles correction</strong> turns the expected goals into scoreline odds, which give match result,
+          double chance, BTTS, total goals, half-time markets and combos. Corners come from each side&apos;s
+          recent corners won and conceded.
         </p>
         <p>
-          Those strengths produce expected goals for each side. A <strong>Poisson model with a
-          Dixon–Coles low-score correction</strong> turns them into a grid of scoreline probabilities, from
-          which 1X2, over/under, both-teams-to-score, double chance and exact scores are derived.
-        </p>
-      </Section>
-
-      <Section title="Basketball & tennis">
-        <p>
-          <strong>Basketball</strong> projects each team&apos;s score from its scoring and defence (pulled toward
-          the league average for small samples) plus home-court advantage, then uses a normal distribution of
-          margins and totals to price the moneyline, spread and totals.
+          <strong>Blended with the market.</strong> Bookmaker prices already contain a lot of information, so
+          the chance you see is about 70% market and 30% form model. In testing this was more accurate than
+          either one alone.
         </p>
         <p>
-          <strong>Tennis</strong> is a simple heuristic that blends ranking gap, recent surface form and
-          head-to-head. It&apos;s the roughest of the three, so lean on the scorecard in Bets → Performance to see
-          if it earns its keep.
+          <strong>Learning.</strong> When your slips settle, BonzStakes compares how often each market landed with
+          how often it expected, and nudges future estimates by up to ±15%. It moves slowly on purpose.
         </p>
       </Section>
 
       <Section title="Reading the numbers">
         <p>
-          <strong>Range.</strong> With few results the estimate is shaky, so the app shows a realistic range
-          around each probability. The wider it is, the less you should trust it.
+          <strong>Chance.</strong> The estimated probability that a pick wins. <strong>Most likely</strong> picks
+          have the highest chance; they usually pay little.
         </p>
         <p>
-          <strong>Market probability.</strong> Bookmaker odds include a margin. When you enter every outcome of
-          a market, the margin is removed to show what the bookmaker really thinks.
+          <strong>Value.</strong> The chance is higher than the odds imply, so the price is good in the long
+          run. Value picks win less often than &quot;most likely&quot; ones.
         </p>
         <p>
-          <strong>EV (expected value).</strong> Average profit per 1 staked <em>if the model were exactly
-          right</em>. <strong>Value</strong> means it clears your minimum edge even at the cautious end of the
-          range. <strong>Lean</strong> means it clears it on the central estimate only. <strong>Fair</strong>{" "}
-          is roughly break-even. <strong>Pass</strong> means the price is worse than the model.
-        </p>
-        <p>
-          <strong>Suggested stake.</strong> A fraction of the Kelly criterion, calculated from the cautious end
-          of the range and capped at a percentage of your bankroll. Treat it as a ceiling, not a target.
+          <strong>Chance all win.</strong> For a slip, every leg must land, so the chances multiply. Five picks
+          at 80% each come in only about 33% of the time.
         </p>
       </Section>
 
       <Section title="What the models can't see">
         <ul className="list-disc space-y-1.5 pl-5">
-          <li>Line-ups, injuries, suspensions, rotation, fatigue and motivation, unless you adjust for them yourself.</li>
-          <li>Opposition quality beyond the coarse top/mid/low setting.</li>
+          <li>Line-ups, injuries, suspensions, rotation, fatigue and motivation. Use the &quot;Dig deeper&quot; links on each match.</li>
+          <li>Opposition quality beyond a coarse strong/average/weak rating.</li>
           <li>Anything the bookmaker knows and you don&apos;t. Bookmaker prices are usually sharp, and a big gap is more likely missing information than a bargain.</li>
         </ul>
         <p>
-          Track <strong>closing-line value</strong> and the <strong>model scorecard</strong> over dozens of bets
-          before believing you have an edge. A few results prove nothing.
+          Watch <strong>What the model learned</strong> and your ROI over dozens of slips before believing you
+          have an edge. A few results prove nothing.
         </p>
       </Section>
 
@@ -104,7 +91,7 @@ export default function About() {
         </p>
         <p>
           Gambling laws differ by country. You are responsible for following the rules where you live.
-          BonzStakes is not affiliated with any bookmaker and contains no betting links.
+          BonzStakes is not affiliated with any bookmaker and contains no betting links. Until a live data source is connected, matches, odds and results are demo data.
         </p>
       </Section>
 

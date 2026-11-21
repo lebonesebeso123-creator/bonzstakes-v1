@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { Download, Upload } from "lucide-react";
-import { DecimalInput, Field, Stat } from "@/components/ui";
+import { Field, Stat } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import {
   addAdjustment,
@@ -104,34 +104,12 @@ export default function AccountPage() {
       </section>
 
       <section className="mb-8" aria-labelledby="stk">
-        <h2 id="stk" className="h-section mb-3">Staking rules</h2>
+        <h2 id="stk" className="h-section mb-3">Preferences</h2>
         <div className="card-pad grid gap-4 sm:grid-cols-2">
-          <Field label="Currency label">
+          <Field label="Currency">
             {(id) => (
               <select id={id} className="input" value={settings.currency} onChange={(e) => updateSettings({ currency: e.target.value })}>
                 {CURRENCIES.map((c) => <option key={c}>{c}</option>)}
-              </select>
-            )}
-          </Field>
-          <Field label="Kelly fraction" hint="Full Kelly is very aggressive. Quarter is a sensible default.">
-            {(id, d) => (
-              <select id={id} aria-describedby={d} className="input" value={settings.kellyFraction} onChange={(e) => updateSettings({ kellyFraction: Number(e.target.value) })}>
-                <option value={0.1}>Tenth (very cautious)</option>
-                <option value={0.25}>Quarter (default)</option>
-                <option value={0.5}>Half</option>
-              </select>
-            )}
-          </Field>
-          <Field label="Max stake (% of bankroll)" hint="Hard cap on any suggested stake.">
-            {(id, d) => <DecimalInput id={id} describedBy={d} value={settings.maxStakePct} onValue={(n) => updateSettings({ maxStakePct: Math.min(10, Math.max(0.1, n)) })} />}
-          </Field>
-          <Field label="Minimum edge to flag value" hint="Expected value needed before a price is marked Value or Lean.">
-            {(id, d) => (
-              <select id={id} aria-describedby={d} className="input" value={settings.evThreshold} onChange={(e) => updateSettings({ evThreshold: Number(e.target.value) })}>
-                <option value={0.03}>3%</option>
-                <option value={0.05}>5% (default)</option>
-                <option value={0.08}>8%</option>
-                <option value={0.1}>10%</option>
               </select>
             )}
           </Field>
@@ -184,7 +162,7 @@ export default function AccountPage() {
           </div>
           <div className="border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <h3 className="mb-1 text-sm font-semibold">Erase everything</h3>
-            <p className="hint mb-2">Deletes bets, analyses, notes and settings from this device. Type ERASE to confirm.</p>
+            <p className="hint mb-2">Deletes bets, notes, learning and settings from this device. Type ERASE to confirm.</p>
             <div className="flex flex-wrap gap-2">
               <input className="input w-40" aria-label="Type ERASE to confirm" value={erase} onChange={(e) => setErase(e.target.value)} placeholder="ERASE" />
               <button className="btn-danger" disabled={erase !== "ERASE"} onClick={() => { eraseAll(); setErase(""); toast("All data erased"); }}>
