@@ -238,16 +238,10 @@ button:disabled {
   border-radius: 18px;
   box-shadow: var(--glass-edge), var(--card-shadow);
 }
-/* real frosted glass only where it's cheap: larger screens with a precise pointer */
-@media (min-width: 768px) and (hover: hover) {
-  .card {
-    backdrop-filter: blur(14px) saturate(1.2);
-  }
-}
 
 @utility glass-bar {
   background: var(--bar);
-  backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(12px);
   border-color: var(--border);
 }
 
@@ -625,6 +619,10 @@ button:disabled {
   }
 }
 
+.view[data-seen] :is(.rise, .prob-fill, .odds-btn) {
+  animation: none;
+}
+
 @keyframes rise {
   from {
     opacity: 0;
@@ -663,12 +661,11 @@ button:disabled {
   }
 }
 
-/* switching themes: colours glide instead of snapping (only during the switch) */
-:root.theme-switching,
-:root.theme-switching *,
-:root.theme-switching *::before,
-:root.theme-switching *::after {
-  transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease, fill 300ms ease !important;
+/* theme switch: one GPU crossfade of the whole page (see ThemeToggle) */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+  animation-timing-function: ease;
 }
 
 .theme-toggle {

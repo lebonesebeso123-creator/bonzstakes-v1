@@ -89,6 +89,7 @@ let lastFilters: { tf: TimeFrame; groups: MarketGroup[]; view: View } = {
   view: "matches",
 };
 const CACHE_MS = 5 * 60_000;
+const tick = () => new Promise((r) => setTimeout(r, 0));
 const remember = (p: Partial<typeof lastFilters>) => {
   lastFilters = { ...lastFilters, ...p };
 };
@@ -124,9 +125,19 @@ const topEdge = (m: AnalysedMatch) => Math.max(-1, ...m.options.filter((o) => o.
 
 function League({ g, slip, defaultOpen, delay }: { g: LeagueGroup; slip: Map<string, string>; defaultOpen: boolean; delay: number }) {
   const [open, setOpen] = useState(defaultOpen);
+  // cards are only built once a league is opened: keeps the page light
+  const [built, setBuilt] = useState(defaultOpen);
   return (
     <section aria-label={`${g.name}, ${g.country}`} className="rise" style={{ animationDelay: `${delay}ms` }}>
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="league-head">
+      <button
+        type="button"
+        onClick={() => {
+          setBuilt(true);
+          setOpen((o) => !o);
+        }}
+        aria-expanded={open}
+        className="league-head"
+      >
         <span className="flex min-w-0 items-center gap-3 text-left">
           <span className="league-badge" aria-hidden>
             {initials(g.name)}
@@ -143,11 +154,13 @@ function League({ g, slip, defaultOpen, delay }: { g: LeagueGroup; slip: Map<str
       </button>
       <div className="expand" data-open={open}>
         <div>
-          <div className="grid grid-cols-1 gap-3 pt-3 sm:grid-cols-2">
-            {g.matches.map((m) => (
-              <MatchCard key={m.fixture.id} m={m} slipKey={slip.get(m.fixture.id)} />
-            ))}
-          </div>
+          {built && (
+            <div className="grid grid-cols-1 gap-3 pt-3 sm:grid-cols-2">
+              {g.matches.map((m) => (
+                <MatchCard key={m.fixture.id} m={m} slipKey={slip.get(m.fixture.id)} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>
@@ -309,18 +322,25 @@ export default function ResearchPage() {
         setError("You're offline. Connect to the internet to load live matches.");
         return null;
       }
-      const started = performance.now();
       try {
         const { from, to } = rangeFor(frame);
         const fixtures = await provider.getFixtures(from, to);
         const avg = leagueGoalAverages(fixtures);
         const matches: AnalysedMatch[] = [];
-        for (const f of fixtures) {
-          if (f.status === "POSTPONED" || f.status === "CANCELLED") continue;
-          const m = analyseFixture(f, markets, learningRef.current, avg[f.league.id]);
-          if (m) matches.push(m);
+        // small batches, yielding between them, so taps and scrolling stay responsive
+        for (let i = 0; i < fixtures.length; i++) {
+          const f = fixtures[i];
+          if (f.status !== "POSTPONED" && f.status !== "CANCELLED") {
+            const m = analyseFixture(f, markets, learningRef.current, avg[f.league.id]);
+            if (m) matches.push(m);
+          }
+          if (i % 8 === 7) await tick();
         }
-        recordDailyPicks(fixtures, avg, learningRef.current);
+        // the scorecard isn't urgent: record it once the browser is idle
+        const learnNow = learningRef.current;
+        const idle = (cb: () => void) =>
+          "requestIdleCallback" in window ? (window as Window & { requestIdleCallback: (f: () => void) => void }).requestIdleCallback(cb) : setTimeout(cb, 200);
+        idle(() => recordDailyPicks(fixtures, avg, learnNow));
         const updates = fixtures.map((f) => f.oddsUpdated).filter(Boolean) as string[];
         const r: RunResult = {
           key,
@@ -332,9 +352,6 @@ export default function ResearchPage() {
           oddsUpdated: updates.sort().at(-1),
           priced: fixtures.filter((f) => Object.keys(f.odds).length > 0).length,
         };
-        // a short, steady skeleton reads better than a flash
-        const left = 280 - (performance.now() - started);
-        if (left > 0) await new Promise((res) => setTimeout(res, left));
         runCache.set(key, r);
         setResult(r);
         return r;
@@ -374,7 +391,7 @@ export default function ResearchPage() {
         setNote("No more matches today, so here's tomorrow.");
         setTf("tomorrow");
       }
-    }, 120);
+    }, 60);
     return () => {
       cancelled = true;
       clearTimeout(t);
@@ -388,8 +405,14 @@ export default function ResearchPage() {
   };
   const toggle = (g: MarketGroup) =>
     setGroups((cur) => (cur.includes(g) ? (cur.length > 1 ? cur.filter((x) => x !== g) : cur) : [...cur, g]));
+  const [visited, setVisited] = useState<Record<View, boolean>>({ matches: true, picks: false, builder: false });
+  // once a view has been shown, coming back to it shouldn't replay its entrance animations
+  const [left, setLeft] = useState<Record<View, boolean>>({ matches: false, picks: false, builder: false });
   const chooseView = (v: View) => {
+    if (v === view) return;
     remember({ view: v });
+    setVisited((x) => (x[v] ? x : { ...x, [v]: true }));
+    setLeft((x) => (x[view] ? x : { ...x, [view]: true }));
     setView(v);
   };
   const viewIdx = VIEWS.findIndex((v) => v.id === view);
@@ -489,9 +512,20 @@ export default function ResearchPage() {
           </div>
         ) : result ? (
           <div className={loading ? "pointer-events-none opacity-60 transition-opacity" : "transition-opacity"} aria-busy={loading}>
-            {view === "matches" && <MatchesView key={result.key} leagues={result.leagues} slip={slip} />}
-            {view === "picks" && <Suggestions matches={result.matches} slip={slip} />}
-            {view === "builder" && <SlipBuilder matches={result.matches} />}
+            {/* views stay mounted once visited, so switching tabs is instant */}
+            <div hidden={view !== "matches"} className="view" data-seen={left.matches || undefined}>
+              <MatchesView key={result.key} leagues={result.leagues} slip={slip} />
+            </div>
+            {(view === "picks" || visited.picks) && (
+              <div hidden={view !== "picks"} className="view" data-seen={left.picks || undefined}>
+                <Suggestions matches={result.matches} slip={slip} />
+              </div>
+            )}
+            {(view === "builder" || visited.builder) && (
+              <div hidden={view !== "builder"} className="view" data-seen={left.builder || undefined}>
+                <SlipBuilder matches={result.matches} />
+              </div>
+            )}
           </div>
         ) : null}
       </div>
