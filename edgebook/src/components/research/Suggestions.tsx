@@ -4,6 +4,9 @@ import { useMemo, useState } from "react";
 import { Brain, Scale, Sparkles } from "lucide-react";
 import { AnalysedMatch, Pick, buildSlip, modelPicks, valuePicks } from "@/lib/research/engine";
 import { replaceSlip } from "@/lib/store";
+import { loadLiveFile } from "@/lib/research/file-provider";
+import { LiveFile } from "@/lib/fd/live-file";
+import { useEffect } from "react";
 import { toast } from "@/components/Toaster";
 import { PickRow, kickoffLabel, whyFor } from "./MatchCard";
 import { legFrom } from "./PickButton";
@@ -44,6 +47,50 @@ function addAll(picks: Pick[], byId: Map<string, AnalysedMatch>, what: string) {
   toast(`${picks.length} ${what} on your slip`);
 }
 
+/** What the backtest says about these numbers, so you know how far to trust them. */
+function TrackRecord() {
+  const [bt, setBt] = useState<LiveFile["backtest"] | null>(null);
+  useEffect(() => {
+    let live = true;
+    loadLiveFile().then((f) => live && f && setBt(f.backtest));
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (!bt) return null;
+  const p = (x: number) => `${(x * 100).toFixed(1)}%`;
+  const s = (x: number | null) => (x === null ? "–" : `${x >= 0 ? "+" : "−"}${Math.abs(x * 100).toFixed(1)}%`);
+  return (
+    <section className="card-pad lg:col-span-2">
+      <h2 className="font-display text-[16px] font-bold">Track record</h2>
+      <p className="hint !mt-0.5">
+        Tested on {bt.testedOn.toLocaleString()} real matches ({bt.seasons}), none of which were used to tune it.
+      </p>
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="stat-tile">
+          <div className="text-[11px] text-muted">Most likely picks landed</div>
+          <div className="num text-lg font-bold">{p(bt.topPicks.winRatio)}</div>
+          <div className="num text-[11px] text-muted">expected {p(bt.topPicks.expected)} over {bt.topPicks.picks.toLocaleString()} picks</div>
+        </div>
+        <div className="stat-tile">
+          <div className="text-[11px] text-muted">Value picks at the best price</div>
+          <div className={`num text-lg font-bold ${(bt.valueBest.roi ?? 0) >= 0 ? "text-mint" : "text-danger"}`}>{s(bt.valueBest.roi)} return</div>
+          <div className="num text-[11px] text-muted">{bt.valueBest.picks} picks, {s(bt.valueBest.clv)} vs closing line</div>
+        </div>
+        <div className="stat-tile">
+          <div className="text-[11px] text-muted">Most likely picks at one bookmaker</div>
+          <div className={`num text-lg font-bold ${(bt.topPicks.roi ?? 0) >= 0 ? "text-mint" : "text-danger"}`}>{s(bt.topPicks.roi)} return</div>
+          <div className="num text-[11px] text-muted">the bookmaker&apos;s margin wins here</div>
+        </div>
+      </div>
+      <p className="hint mt-2">
+        Accurate chances don&apos;t beat the margin on their own. Profit came from taking the best price, so compare
+        bookmakers and type your price on the slip.
+      </p>
+    </section>
+  );
+}
+
 export function Suggestions({ matches, slip }: { matches: AnalysedMatch[]; slip: Map<string, string> }) {
   const byId = useMemo(() => new Map(matches.map((m) => [m.fixture.id, m])), [matches]);
   const model = useMemo(() => modelPicks(matches), [matches]);
@@ -51,6 +98,7 @@ export function Suggestions({ matches, slip }: { matches: AnalysedMatch[]; slip:
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <TrackRecord />
       <section className="card-pad min-w-0">
         <div className="flex items-start justify-between gap-3">
           <div>

@@ -226,6 +226,7 @@ function MatchCard({ m, slipKey }: { m: AnalysedMatch; slipKey?: string }) {
                         <span className="block truncate text-[13px]">{o.label}</span>
                         <span className="num text-[11px] text-muted">
                           {(o.prob * 100).toFixed(0)}% · fair {o.fairOdds.toFixed(2)}
+                          {f.best?.[o.key] && f.best[o.key] > o.odds && <> · best {f.best[o.key].toFixed(2)}</>}
                           {isValue(o) && <span className="ml-1.5 font-semibold text-mint">value</span>}
                         </span>
                       </span>

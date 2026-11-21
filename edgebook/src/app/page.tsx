@@ -423,12 +423,12 @@ export default function ResearchPage() {
         <div className="flex items-start justify-between gap-3">
           <h1 className="h-page">{headline(tf)}</h1>
           {provider.isDemo ? (
-            <Link href="/account#data-source" className="demo-pill mt-1.5" title="Sample matches and odds. Connect live data in Account.">
+            <span className="demo-pill mt-1.5" title="Sample matches and odds">
               <Database size={12} aria-hidden /> Demo
-            </Link>
+            </span>
           ) : (
-            <span className="live-pill mt-1.5">
-              <span className="live-dot" aria-hidden /> Live
+            <span className="live-pill mt-1.5" title="Real fixtures, odds and results from football-data.co.uk, refreshed every 6 hours">
+              <span className="live-dot" aria-hidden /> Real data
             </span>
           )}
         </div>

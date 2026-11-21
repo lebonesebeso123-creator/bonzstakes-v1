@@ -69,7 +69,7 @@ export function ResultChecker() {
     setBusy(true);
     const n = await settleDue(forceDemo);
     setBusy(false);
-    toast(n ? `Settled ${n} ${n === 1 ? "match" : "matches"}` : "No new results yet. Matches finish about 2 hours after kick-off.");
+    toast(n ? `Settled ${n} ${n === 1 ? "match" : "matches"}` : "No new results yet. Real results arrive 1–3 days after the match.");
   };
 
   if (!pending.length) return null;
@@ -78,7 +78,7 @@ export function ResultChecker() {
       <button className="btn-secondary btn-sm" onClick={() => check()} disabled={busy}>
         <RefreshCw size={14} aria-hidden className={busy ? "animate-spin" : ""} /> Check results
       </button>
-      {pending.some((l) => !l.fixtureId.startsWith("fd:")) && (
+      {pending.some((l) => !l.fixtureId.startsWith("fd")) && (
         <button className="btn-ghost btn-sm" onClick={() => check(true)} disabled={busy}>
           <FlaskConical size={14} aria-hidden /> Simulate results (demo)
         </button>

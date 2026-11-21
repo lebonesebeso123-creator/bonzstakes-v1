@@ -14,7 +14,9 @@ no real money. Everything is stored in your browser.
   slip builder that hits your target odds with the highest combined probability.
 - **Bet slip**: one pick per match (combo picks count as one), total odds, stake, placed straight to Bets.
   Selections settle automatically from results, and each market's hit rate feeds back into future estimates.
-- **Data**: built-in demo data by default. For live fixtures, results and odds (free), deploy the proxy in
+- **Data**: real fixtures, odds, form and results from football-data.co.uk for 10 European leagues, fetched and
+  calibrated by the GitHub Action every 6 hours (see ../BACKTEST.md for how well it predicts).
+- **Optional live APIs**: shelved; For live fixtures, results and odds (free), deploy the proxy in
   `../proxy` (football-data.org + The Odds API on a Cloudflare Worker) and paste its URL in Account → Match data.
   Markets without a bookmaker price show a fair price and an estimate; type your bookmaker's price on the slip.
 - **Sync**: Account → Sync between devices, through a private GitHub Gist (token with Gists read & write).

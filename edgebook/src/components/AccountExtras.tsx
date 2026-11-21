@@ -33,17 +33,17 @@ function DataSourceForm() {
 
   const save = async () => {
     const clean = url.trim().replace(/\/+$/, "");
-    if (clean && !/^https:\/\//.test(clean)) {
+    if (clean && clean !== "demo" && !/^https:\/\//.test(clean)) {
       setStatus({ ok: false, message: "Use the https:// address of your worker." });
       return;
     }
     setBusy(true);
-    const r = clean ? await testConnection(clean) : { ok: true, message: "Using demo data." };
+    const r = !clean ? { ok: true, message: "Using the built-in real data." } : clean === "demo" ? { ok: true, message: "Using demo data." } : await testConnection(clean);
     setBusy(false);
     setStatus(r);
     if (r.ok) {
       updateSettings({ dataUrl: clean || undefined });
-      toast(clean ? "Live data connected" : "Switched to demo data");
+      toast(!clean ? "Using real data" : clean === "demo" ? "Switched to demo data" : "Live APIs connected");
     }
   };
 
@@ -53,15 +53,15 @@ function DataSourceForm() {
       <div className="card-pad">
         <div className="mb-3 flex items-center gap-2 text-sm">
           <Plug size={16} aria-hidden className={live ? "text-accent" : "text-muted"} />
-          {live ? "Live data through your proxy" : "Demo data (sample matches and odds)"}
+          {live ? "Live APIs through your proxy" : "Real data from football-data.co.uk, refreshed every 6 hours"}
         </div>
-        <Field label="Proxy URL" hint="Your Cloudflare Worker address, e.g. https://bonzstakes.yourname.workers.dev. Leave empty for demo data.">
+        <Field label="Live API proxy (optional)" hint="Only if you set up the Cloudflare Worker for live APIs. Leave empty to use the built-in real data, or type demo for sample data.">
           {(id, d) => (
             <input
               id={id}
               aria-describedby={d}
               className="input"
-              type="url"
+              type="text"
               inputMode="url"
               autoCapitalize="none"
               autoCorrect="off"
@@ -72,7 +72,7 @@ function DataSourceForm() {
           )}
         </Field>
         <button className="btn-primary mt-3" onClick={save} disabled={busy}>
-          {busy ? "Testing…" : url.trim() ? "Test & save" : "Use demo data"}
+          {busy ? "Testing…" : url.trim() ? "Save" : "Use built-in data"}
         </button>
         {status && <Status ok={status.ok} text={status.message} />}
       </div>

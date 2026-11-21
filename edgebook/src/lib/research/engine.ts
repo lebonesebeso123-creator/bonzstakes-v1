@@ -181,27 +181,30 @@ export function analyseFixture(
     awayForm: f.awayForm,
     leagueGoals,
   });
-  if (!model) return null;
+  if (!model && !f.probs) return null;
   const hasCorners = f.hasCorners !== false;
-  const corners = hasCorners
-    ? (f.homeCorners.for + f.awayCorners.against) / 2 + (f.awayCorners.for + f.homeCorners.against) / 2
-    : 10;
-  const probs = probsFromRates(model.lambdaHome, model.lambdaAway, corners);
-  // an "average match" in this league, used to tame model-only estimates
-  const ha = 1.25;
-  const base = probsFromRates((leagueGoals * ha) / (1 + ha), leagueGoals / (1 + ha), 10);
-  const fair = fairFromOdds(f.odds);
+  const corners =
+    f.cornersMean ??
+    (hasCorners ? (f.homeCorners.for + f.awayCorners.against) / 2 + (f.awayCorners.for + f.homeCorners.against) / 2 : 10);
   const set = new Set(groups);
   const options: Pick[] = [];
+
+  // Real data: the pipeline's calibrated probabilities (backtested on 7,900+ matches).
+  // Demo data: the in-app form model blended with the prices, as before.
+  const probs = f.probs ?? probsFromRates(model!.lambdaHome, model!.lambdaAway, corners);
+  const ha = 1.25;
+  const base = f.probs ? undefined : probsFromRates((leagueGoals * ha) / (1 + ha), leagueGoals / (1 + ha), 10);
+  const fair = f.probs ? undefined : fairFromOdds(f.odds);
   for (const s of SELECTIONS) {
     if (!set.has(s.group)) continue;
     if (s.group === "corners" && !hasCorners) continue;
     const modelProb = probs[s.key];
-    const market = fair[s.key];
-    const raw =
-      market !== undefined
-        ? MODEL_WEIGHT * modelProb + (1 - MODEL_WEIGHT) * market
-        : (1 - UNPRICED_SHRINK) * modelProb + UNPRICED_SHRINK * base[s.key];
+    if (modelProb === undefined) continue;
+    let raw = modelProb;
+    if (!f.probs) {
+      const market = fair![s.key];
+      raw = market !== undefined ? MODEL_WEIGHT * modelProb + (1 - MODEL_WEIGHT) * market : (1 - UNPRICED_SHRINK) * modelProb + UNPRICED_SHRINK * base![s.key];
+    }
     const prob = Math.min(0.99, Math.max(0.01, raw * learnFactor(learning, s.key)));
     const price = f.odds[s.key];
     const priced = !!price && price > 1;
@@ -216,7 +219,7 @@ export function analyseFixture(
       priced,
       fairOdds: Math.round((1 / prob) * 100) / 100,
       edge: priced ? prob * odds - 1 : null,
-      implied: market ?? null,
+      implied: f.probs ? (priced ? modelProb : null) : fair![s.key] ?? null,
       modelProb,
     });
   }
@@ -225,12 +228,13 @@ export function analyseFixture(
     const inGroup = options.filter((o) => o.group === g && o.odds >= MIN_ODDS);
     if (inGroup.length) best.push(inGroup.reduce((a, b) => (b.prob > a.prob ? b : a)));
   }
+  const n = Math.min(f.homeForm.length, f.awayForm.length);
   return {
     fixture: f,
-    xgHome: model.lambdaHome,
-    xgAway: model.lambdaAway,
+    xgHome: f.xg?.[0] ?? model!.lambdaHome,
+    xgAway: f.xg?.[1] ?? model!.lambdaAway,
     corners,
-    quality: model.quality,
+    quality: f.probs ? (n >= 5 ? "good" : n >= 2 ? "limited" : "poor") : model!.quality,
     options,
     best,
   };

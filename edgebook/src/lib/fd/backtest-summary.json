@@ -1,0 +1,70 @@
+{
+ "testedOn": 7933,
+ "seasons": "2024/25 to now",
+ "trainedOn": "2022/23–2023/24",
+ "topPicks": {
+  "picks": 3490,
+  "winRatio": 0.749,
+  "expected": 0.744,
+  "roi": -0.014,
+  "clv": -0.0265
+ },
+ "topByMarket": {
+  "dc": {
+   "n": 1273,
+   "hit": 0.742,
+   "expected": 0.736,
+   "roi": null
+  },
+  "goals": {
+   "n": 933,
+   "hit": 0.743,
+   "expected": 0.749,
+   "roi": -0.031
+  },
+  "htGoals": {
+   "n": 446,
+   "hit": 0.769,
+   "expected": 0.743,
+   "roi": null
+  },
+  "1x2": {
+   "n": 426,
+   "hit": 0.763,
+   "expected": 0.766,
+   "roi": -0.006
+  },
+  "htBtts": {
+   "n": 287,
+   "hit": 0.76,
+   "expected": 0.747,
+   "roi": null
+  },
+  "corners": {
+   "n": 81,
+   "hit": 0.716,
+   "expected": 0.714,
+   "roi": null
+  },
+  "combo": {
+   "n": 44,
+   "hit": 0.773,
+   "expected": 0.734,
+   "roi": null
+  }
+ },
+ "valueBest": {
+  "picks": 290,
+  "winRatio": 0.607,
+  "expected": 0.611,
+  "roi": 0.1103,
+  "clv": 0.0478
+ },
+ "valueSoft": {
+  "picks": 3,
+  "winRatio": 1,
+  "expected": 0.701,
+  "roi": 0.8533,
+  "clv": 0.2138
+ }
+}

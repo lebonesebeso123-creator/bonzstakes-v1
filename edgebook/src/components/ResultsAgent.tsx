@@ -22,7 +22,7 @@ export async function settleDue(forceDemo = false): Promise<number> {
   const results: Record<string, ResultOrVoid> = {};
   for (const id of due) {
     try {
-      const r = await resultFor(id, s.settings.dataUrl, forceDemo && !id.startsWith("fd:"));
+      const r = await resultFor(id, s.settings.dataUrl, forceDemo && !id.startsWith("fd"));
       if (r) results[id] = r;
     } catch {
       /* try again next time */

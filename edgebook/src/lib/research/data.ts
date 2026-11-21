@@ -35,6 +35,13 @@ export interface Fixture {
   hasCorners?: boolean;
   /** source status, e.g. "SCHEDULED", "POSTPONED" */
   status?: string;
+  /** calibrated probabilities from the data pipeline (used instead of the in-app model) */
+  probs?: Record<string, number>;
+  /** best price available across bookmakers */
+  best?: Record<string, number>;
+  /** expected goals and league corner average, for display and reasons */
+  xg?: [number, number];
+  cornersMean?: number;
 }
 
 /** A finished match, or "void" when it was postponed, cancelled or abandoned. */
@@ -129,14 +136,6 @@ const LEAGUES: DemoLeague[] = [
   {
     id: "primeira", name: "Primeira Liga", country: "Portugal", tier: 2, goals: 2.6, days: [5, 6, 6, 0, 0, 1],
     teams: ["Sporting CP", "Benfica", "Porto", "Braga", "Vitória SC", "Santa Clara", "Famalicão", "Casa Pia", "Estoril", "Gil Vicente"],
-  },
-  {
-    id: "psl", name: "Betway Premiership", country: "South Africa", tier: 3, goals: 2.2, days: [5, 6, 6, 0, 0], midweek: 2,
-    teams: ["Mamelodi Sundowns", "Orlando Pirates", "Kaizer Chiefs", "Stellenbosch", "Sekhukhune United", "SuperSport United", "Polokwane City", "TS Galaxy", "AmaZulu", "Golden Arrows"],
-  },
-  {
-    id: "bpl", name: "Premier League", country: "Botswana", tier: 3, goals: 2.4, days: [6, 6, 6, 0, 0],
-    teams: ["Jwaneng Galaxy", "Gaborone United", "Township Rollers", "Orapa United", "Botswana Defence Force XI", "Police XI", "Morupule Wanderers", "Extension Gunners", "Sua Flamingoes", "Mochudi Centre Chiefs"],
   },
 ];
 
