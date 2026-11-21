@@ -152,6 +152,28 @@ export interface Bet {
   legs?: Leg[];
 }
 
+/** One of the app's own top picks, recorded before kick-off and settled automatically. */
+export interface TrackedPick {
+  id: string; // fixtureId|key
+  fixtureId: string;
+  key: string;
+  group: string;
+  selection: string;
+  home: string;
+  away: string;
+  league: string;
+  kickoff: string;
+  /** local calendar day of kick-off, YYYY-MM-DD */
+  day: string;
+  kind: "likely" | "value";
+  prob: number;
+  odds: number;
+  priced: boolean;
+  recordedAt: string;
+  status: BetStatus;
+  result?: MatchResultData;
+}
+
 export interface Adjustment {
   id: string;
   amount: number;
@@ -187,6 +209,8 @@ export interface AppState {
   settings: Settings;
   /** selections waiting on the bet slip */
   slip?: Leg[];
+  /** the app's own daily picks, for the scorecard and learning */
+  tracked?: TrackedPick[];
   /** learning ignores slips placed before this (set by "Reset learning") */
   learningSince?: string;
   /** ids of deleted bets/notes, so sync doesn't bring them back */

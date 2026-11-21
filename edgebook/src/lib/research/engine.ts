@@ -66,24 +66,44 @@ export function learnFactor(learning: Learning | undefined, key: string): number
   return Math.min(1.15, Math.max(0.85, f));
 }
 
-/** Builds the learning stats from settled slip legs (won/lost only; voids don't count). */
+type Settled = { fixtureId?: string; key: string; prob: number; status: string };
+
+/**
+ * Learning stats from settled picks: your slip legs plus the app's own daily picks.
+ * A selection on the same match is counted once. Won/lost only; voids don't count.
+ */
 export function learningFrom(
-  bets: { placedAt: string; legs?: { key: string; prob: number; status: string }[] }[],
-  since?: string
+  bets: { placedAt: string; legs?: Settled[] }[],
+  since?: string,
+  tracked: (Settled & { recordedAt: string })[] = []
 ): Learning {
   const out: Learning = {};
+  const seen = new Set<string>();
+  const add = (l: Settled) => {
+    if (l.status !== "won" && l.status !== "lost") return;
+    if (l.fixtureId) {
+      const id = `${l.fixtureId}|${l.key}`;
+      if (seen.has(id)) return;
+      seen.add(id);
+    }
+    const s = (out[l.key] ??= { n: 0, wins: 0, expected: 0 });
+    s.n++;
+    s.wins += l.status === "won" ? 1 : 0;
+    s.expected += l.prob;
+  };
+  for (const t of tracked) if (!since || t.recordedAt >= since) add(t);
   for (const b of bets) {
     if (!b.legs || (since && b.placedAt < since)) continue;
-    for (const l of b.legs) {
-      if (l.status !== "won" && l.status !== "lost") continue;
-      const s = (out[l.key] ??= { n: 0, wins: 0, expected: 0 });
-      s.n++;
-      s.wins += l.status === "won" ? 1 : 0;
-      s.expected += l.prob;
-    }
+    b.legs.forEach(add);
   }
   return out;
 }
+
+/** Local calendar day, YYYY-MM-DD. */
+export const localDay = (d: Date | string) => {
+  const x = new Date(d);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+};
 
 /* ---------------- analysis ---------------- */
 

@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ChevronDown, Database, Layers, ListChecks, Search, Sparkles } from "lucide-react";
+import { AlertTriangle, ChevronDown, Database, Layers, ListChecks, Search, Sparkles, Trophy } from "lucide-react";
 import MatchCard from "@/components/research/MatchCard";
 import { SlipBuilder, Suggestions } from "@/components/research/Suggestions";
-import { useAppState, useHydrated } from "@/lib/store";
+import { trackPicks, useAppState, useHydrated } from "@/lib/store";
 import { getProvider } from "@/lib/research/provider";
 import {
   AnalysedMatch,
@@ -16,9 +16,57 @@ import {
   groupByLeague,
   leagueGoalAverages,
   learningFrom,
+  localDay,
+  modelPicks,
   rangeFor,
+  valuePicks,
 } from "@/lib/research/engine";
-import { MARKET_GROUPS, MarketGroup } from "@/lib/research/markets";
+import { GROUP_LABEL, MARKET_GROUPS, MarketGroup } from "@/lib/research/markets";
+import { Fixture } from "@/lib/research/data";
+
+const ALL_GROUPS = MARKET_GROUPS.map((g) => g.id);
+
+/**
+ * The daily scorecard: for each day, the 10 most likely picks and 5 best value picks across all
+ * markets, recorded before kick-off. Recorded once; the pre-match estimate is never changed.
+ */
+function recordDailyPicks(fixtures: Fixture[], avg: Record<string, number>, learning: ReturnType<typeof learningFrom>) {
+  const now = Date.now();
+  const byDay = new Map<string, AnalysedMatch[]>();
+  for (const f of fixtures) {
+    if (new Date(f.kickoff).getTime() <= now || f.status === "POSTPONED" || f.status === "CANCELLED") continue;
+    const m = analyseFixture(f, ALL_GROUPS, learning, avg[f.league.id]);
+    if (!m) continue;
+    const d = localDay(f.kickoff);
+    byDay.set(d, [...(byDay.get(d) ?? []), m]);
+  }
+  const out: Parameters<typeof trackPicks>[0] = [];
+  for (const [day, ms] of byDay) {
+    const byId = new Map(ms.map((m) => [m.fixture.id, m.fixture]));
+    const add = (kind: "likely" | "value") => (p: ReturnType<typeof modelPicks>[number]) => {
+      const f = byId.get(p.fixtureId)!;
+      out.push({
+        id: `${p.fixtureId}|${p.key}`,
+        fixtureId: p.fixtureId,
+        key: p.key,
+        group: GROUP_LABEL[p.group],
+        selection: p.label,
+        home: f.home,
+        away: f.away,
+        league: `${f.league.name} · ${f.league.country}`,
+        kickoff: f.kickoff,
+        day,
+        kind,
+        prob: p.prob,
+        odds: p.odds,
+        priced: p.priced,
+      });
+    };
+    modelPicks(ms, 10).forEach(add("likely"));
+    valuePicks(ms, 5).forEach(add("value"));
+  }
+  trackPicks(out);
+}
 
 type View = "matches" | "picks" | "builder";
 
@@ -224,7 +272,18 @@ export default function ResearchPage() {
   const userPickedTf = useRef(lastFilters.tf !== "today");
 
   const slip = useMemo(() => new Map((state.slip ?? []).map((l) => [l.fixtureId, l.key])), [state.slip]);
-  const learning = useMemo(() => learningFrom(state.bets, state.learningSince), [state.bets, state.learningSince]);
+  const learning = useMemo(
+    () => learningFrom(state.bets, state.learningSince, state.tracked),
+    [state.bets, state.learningSince, state.tracked]
+  );
+  const [day, setDay] = useState(() => localDay(new Date()));
+  const yesterday = useMemo(() => {
+    const d = new Date(`${day}T12:00:00`);
+    d.setDate(d.getDate() - 1);
+    const key = localDay(d);
+    const picks = (state.tracked ?? []).filter((t) => t.day === key && t.kind === "likely" && (t.status === "won" || t.status === "lost"));
+    return picks.length ? { won: picks.filter((t) => t.status === "won").length, n: picks.length } : null;
+  }, [state.tracked, day]);
   const learned = useMemo(() => Object.values(learning).reduce((a, s) => a + s.n, 0), [learning]);
   const dataUrl = state.settings.dataUrl;
   const provider = getProvider(dataUrl);
@@ -235,7 +294,7 @@ export default function ResearchPage() {
 
   const run = useCallback(
     async (frame: TimeFrame, markets: MarketGroup[], force = false) => {
-      const key = `${frame}|${[...markets].sort().join(",")}|${dataUrl ?? "demo"}|${learned}`;
+      const key = `${localDay(new Date())}|${frame}|${[...markets].sort().join(",")}|${dataUrl ?? "demo"}|${learned}`;
       const hit = runCache.get(key);
       if (hit && !force && Date.now() - hit.at < CACHE_MS) {
         setResult(hit);
@@ -261,6 +320,7 @@ export default function ResearchPage() {
           const m = analyseFixture(f, markets, learningRef.current, avg[f.league.id]);
           if (m) matches.push(m);
         }
+        recordDailyPicks(fixtures, avg, learningRef.current);
         const updates = fixtures.map((f) => f.oddsUpdated).filter(Boolean) as string[];
         const r: RunResult = {
           key,
@@ -288,7 +348,21 @@ export default function ResearchPage() {
     [provider, dataUrl, learned]
   );
 
-  // Load automatically, and again whenever the filters change.
+  // A new day starts at local midnight, or when the app is reopened on a later day.
+  useEffect(() => {
+    const check = () => setDay(localDay(new Date()));
+    const next = new Date();
+    next.setHours(24, 0, 5, 0);
+    const t = window.setTimeout(check, next.getTime() - Date.now());
+    const onShow = () => document.visibilityState === "visible" && check();
+    document.addEventListener("visibilitychange", onShow);
+    return () => {
+      window.clearTimeout(t);
+      document.removeEventListener("visibilitychange", onShow);
+    };
+  }, [day]);
+
+  // Load automatically, and again whenever the filters or the day change.
   useEffect(() => {
     if (!hydrated) return;
     remember({ tf, groups });
@@ -305,7 +379,7 @@ export default function ResearchPage() {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [hydrated, tf, groups, run]);
+  }, [hydrated, tf, groups, run, day]);
 
   const chooseTf = (t: TimeFrame) => {
     userPickedTf.current = true;
@@ -345,6 +419,12 @@ export default function ResearchPage() {
             : ""}
         </p>
         {note && <p className="mt-1 text-[13px] text-sky">{note}</p>}
+        {yesterday && (
+          <Link href="/bets?tab=scorecard" className="score-chip mt-3">
+            <Trophy size={14} aria-hidden />
+            Yesterday: {yesterday.won} of {yesterday.n} top picks landed
+          </Link>
+        )}
       </header>
 
       <section aria-label="Filters" className="space-y-2.5">

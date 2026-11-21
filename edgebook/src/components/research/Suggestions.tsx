@@ -5,7 +5,7 @@ import { Brain, Scale, Sparkles } from "lucide-react";
 import { AnalysedMatch, Pick, buildSlip, modelPicks, valuePicks } from "@/lib/research/engine";
 import { replaceSlip } from "@/lib/store";
 import { toast } from "@/components/Toaster";
-import { PickRow, kickoffLabel } from "./MatchCard";
+import { PickRow, kickoffLabel, whyFor } from "./MatchCard";
 import { legFrom } from "./PickButton";
 
 function PickList({
@@ -30,7 +30,7 @@ function PickList({
               {m.fixture.home} v {m.fixture.away} · {kickoffLabel(m.fixture.kickoff).day}
             </div>
             <ul>
-              <PickRow pick={p} m={m} inSlip={slip.get(p.fixtureId) === p.key} />
+              <PickRow pick={p} m={m} inSlip={slip.get(p.fixtureId) === p.key} why={whyFor(p, m)[0]} />
             </ul>
           </li>
         );

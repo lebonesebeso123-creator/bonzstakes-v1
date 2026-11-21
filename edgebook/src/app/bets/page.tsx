@@ -12,8 +12,11 @@ import { dateShort, money, pct, signedPct } from "@/lib/format";
 import { parseOdds } from "@/lib/odds";
 import { Bet } from "@/lib/types";
 import { LearningCard, LegList, ResultChecker } from "@/components/research/BetLegs";
+import Scorecard from "@/components/research/Scorecard";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-type Tab = "open" | "history" | "performance";
+type Tab = "open" | "history" | "scorecard" | "performance";
 
 
 function BetCard({ bet, currency }: { bet: Bet; currency: string }) {
@@ -202,10 +205,11 @@ function Performance() {
   );
 }
 
-export default function BetsPage() {
+function BetsInner() {
+  const params = useSearchParams();
   const state = useAppState();
   const cur = state.settings.currency;
-  const [tab, setTab] = useState<Tab>("open");
+  const [tab, setTab] = useState<Tab>(params.get("tab") === "scorecard" ? "scorecard" : "open");
   const [resultF, setResultF] = useState<"all" | "won" | "lost" | "void">("all");
 
   const br = bankrollOf(state);
@@ -236,6 +240,7 @@ export default function BetsPage() {
         tabs={[
           { value: "open", label: "Open", count: open.length },
           { value: "history", label: "History", count: historyAll },
+          { value: "scorecard", label: "Scorecard" },
           { value: "performance", label: "Performance" },
         ]}
       />
@@ -285,7 +290,16 @@ export default function BetsPage() {
           </>
         ))}
 
+      {tab === "scorecard" && <Scorecard />}
       {tab === "performance" && <Performance />}
     </div>
+  );
+}
+
+export default function BetsPage() {
+  return (
+    <Suspense fallback={null}>
+      <BetsInner />
+    </Suspense>
   );
 }

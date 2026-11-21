@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { CheckCircle2, Circle, Clock, FlaskConical, RefreshCw, XCircle } from "lucide-react";
-import { applyResults, resetLearning, useAppState } from "@/lib/store";
-import { ResultOrVoid } from "@/lib/research/data";
-import { resultFor } from "@/lib/research/provider";
-import { LEARN_MIN, learnFactor, learningFrom, settleOutcome } from "@/lib/research/engine";
+import { resetLearning, useAppState } from "@/lib/store";
+import { settleDue } from "@/components/ResultsAgent";
+import { LEARN_MIN, learnFactor, learningFrom } from "@/lib/research/engine";
 import { MARKET_GROUPS, SELECTION_BY_KEY } from "@/lib/research/markets";
 import { Leg } from "@/lib/types";
 import { toast } from "@/components/Toaster";
@@ -55,7 +54,7 @@ export function LegList({ legs }: { legs: Leg[] }) {
   );
 }
 
-/** Fetches final results for open selections and settles them. Runs once on load, and on demand. */
+/** Manual result check (the background agent also does this every 10 minutes). */
 export function ResultChecker() {
   const state = useAppState();
   const [busy, setBusy] = useState(false);
@@ -66,39 +65,12 @@ export function ResultChecker() {
         .flatMap((b) => b.legs!.filter((l) => l.status === "open")),
     [state.bets]
   );
-  const ran = useRef(false);
-
-  const check = useCallback(
-    async (opts: { quiet?: boolean; forceDemo?: boolean } = {}) => {
-      if (!pending.length) return;
-      setBusy(true);
-      const results: Record<string, ResultOrVoid> = {};
-      let failed = false;
-      for (const id of new Set(pending.map((l) => l.fixtureId))) {
-        try {
-          const r = await resultFor(id, state.settings.dataUrl, opts.forceDemo);
-          if (r) results[id] = r;
-        } catch {
-          failed = true;
-        }
-      }
-      const n = Object.keys(results).length;
-      if (n) applyResults(results, settleOutcome);
-      setBusy(false);
-      if (opts.quiet) return;
-      if (n) toast(`Settled ${n} ${n === 1 ? "match" : "matches"}`);
-      else if (failed) toast("Couldn't reach the results source. Try again later.");
-      else toast("No new results yet. Matches finish about 2 hours after kick-off.");
-    },
-    [pending, state.settings.dataUrl]
-  );
-
-  useEffect(() => {
-    if (ran.current || !pending.length) return;
-    ran.current = true;
-    // a deferred call is fine here: it syncs with the external results source
-    void check({ quiet: true });
-  }, [pending, check]);
+  const check = async (forceDemo = false) => {
+    setBusy(true);
+    const n = await settleDue(forceDemo);
+    setBusy(false);
+    toast(n ? `Settled ${n} ${n === 1 ? "match" : "matches"}` : "No new results yet. Matches finish about 2 hours after kick-off.");
+  };
 
   if (!pending.length) return null;
   return (
@@ -107,7 +79,7 @@ export function ResultChecker() {
         <RefreshCw size={14} aria-hidden className={busy ? "animate-spin" : ""} /> Check results
       </button>
       {pending.some((l) => !l.fixtureId.startsWith("fd:")) && (
-        <button className="btn-ghost btn-sm" onClick={() => check({ forceDemo: true })} disabled={busy}>
+        <button className="btn-ghost btn-sm" onClick={() => check(true)} disabled={busy}>
           <FlaskConical size={14} aria-hidden /> Simulate results (demo)
         </button>
       )}
@@ -122,7 +94,7 @@ export function ResultChecker() {
 export function LearningCard() {
   const state = useAppState();
   const rows = useMemo(() => {
-    const L = learningFrom(state.bets, state.learningSince);
+    const L = learningFrom(state.bets, state.learningSince, state.tracked);
     return MARKET_GROUPS.map((g) => {
       const keys = Object.keys(L).filter((k) => SELECTION_BY_KEY[k]?.group === g.id);
       const n = keys.reduce((a, k) => a + L[k].n, 0);
@@ -132,15 +104,15 @@ export function LearningCard() {
       const factor = keys.reduce((a, k) => a + learnFactor(L, k) * L[k].n, 0) / n;
       return { g, n, hit: wins / n, exp: expected / n, factor };
     }).filter(Boolean) as { g: (typeof MARKET_GROUPS)[number]; n: number; hit: number; exp: number; factor: number }[];
-  }, [state.bets, state.learningSince]);
+  }, [state.bets, state.learningSince, state.tracked]);
 
   return (
     <div className="card-pad">
       <h2 className="mb-1 font-display text-[16px] font-bold">What the model learned</h2>
       {rows.length === 0 ? (
         <p className="text-sm text-muted">
-          Once Research slips settle, this compares how often each market landed with how often BonzStakes expected,
-          and nudges future estimates.
+          As your slips and the daily scorecard settle, this compares how often each market landed with how often
+          BonzStakes expected, and nudges future estimates.
         </p>
       ) : (
         <>

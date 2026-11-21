@@ -473,6 +473,32 @@ button:disabled {
     box-shadow: 0 0 0 0 rgba(94, 224, 160, 0.6);
     animation: pulse 2.4s ease-out infinite;
   }
+  .score-chip {
+    @apply inline-flex min-h-9 items-center gap-2 rounded-full px-3.5 text-[13px] font-semibold;
+    color: var(--foreground);
+    background: rgb(var(--tint) / 0.05);
+    border: 1px solid var(--border);
+    transition: background-color 160ms ease, transform 140ms var(--ease-out);
+  }
+  .score-chip svg {
+    color: var(--gold);
+  }
+  .score-chip:active {
+    transform: scale(0.97);
+  }
+  .why-lead {
+    @apply mx-4 mt-1 mb-1 rounded-xl px-3 py-2 text-[13px] leading-snug text-muted;
+    background: rgba(117, 170, 219, 0.08);
+    border: 1px solid rgba(117, 170, 219, 0.16);
+  }
+  .why {
+    @apply mt-1 flex gap-1.5 text-[12px] leading-snug text-muted;
+  }
+  .why::before {
+    content: "";
+    @apply mt-[7px] h-1 w-1 shrink-0 rounded-full;
+    background: var(--sky);
+  }
   .stat-tile {
     @apply rounded-xl px-3 py-2.5;
     background: rgb(var(--tint) / 0.045);

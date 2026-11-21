@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import Toaster from "@/components/Toaster";
 import SlipBar from "@/components/research/SlipBar";
 import SyncAgent from "@/components/SyncAgent";
+import ResultsAgent from "@/components/ResultsAgent";
 import { themeScript } from "@/components/ThemeToggle";
 
 export const metadata: Metadata = {
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Footer />
         <SlipBar />
         <SyncAgent />
+        <ResultsAgent />
         <Toaster />
       </body>
     </html>

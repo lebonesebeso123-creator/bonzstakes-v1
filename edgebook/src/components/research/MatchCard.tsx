@@ -5,6 +5,7 @@ import { ChevronDown, ExternalLink } from "lucide-react";
 import { FormMatch } from "@/lib/types";
 import { AnalysedMatch, Pick, isValue } from "@/lib/research/engine";
 import { MARKET_GROUPS } from "@/lib/research/markets";
+import { reasonsFor } from "@/lib/research/reasons";
 import PickButton from "./PickButton";
 
 export function kickoffLabel(iso: string) {
@@ -22,16 +23,21 @@ export function ProbBar({ p }: { p: number }) {
   );
 }
 
+export const whyFor = (pick: Pick, m: AnalysedMatch) =>
+  reasonsFor(pick.key, m.fixture, { home: m.xgHome, away: m.xgAway, corners: m.corners });
+
 export function PickRow({
   pick,
   m,
   inSlip,
   tag,
+  why,
 }: {
   pick: Pick;
   m: AnalysedMatch;
   inSlip: boolean;
   tag?: string;
+  why?: string;
 }) {
   return (
     <li className="flex items-center gap-3 py-2">
@@ -51,6 +57,7 @@ export function PickRow({
             </span>
           </span>
         </div>
+        {why && <p className="why">{why}</p>}
       </div>
       <PickButton pick={pick} fixture={m.fixture} active={inSlip} />
     </li>
@@ -102,6 +109,19 @@ function MatchCard({ m, slipKey }: { m: AnalysedMatch; slipKey?: string }) {
     setOpen((o) => !o);
   };
   const groups = MARKET_GROUPS.filter((g) => m.options.some((o) => o.group === g.id));
+  // the headline reason: first market in your order (match winner, BTTS, goals…) with real evidence
+  const order = ["1x2", "btts", "goals", "dc", "combo", "htBtts", "htGoals", "corners"];
+  const ranked = [...m.best].filter((p) => p.odds >= 1.3).sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
+  let lead = ranked[0];
+  let leadWhy: string | undefined;
+  for (const p of ranked) {
+    const r = whyFor(p, m)[0];
+    if (r) {
+      lead = p;
+      leadWhy = r;
+      break;
+    }
+  }
 
   return (
     <article className="card min-w-0 overflow-hidden" aria-label={`${f.home} versus ${f.away}`}>
@@ -131,6 +151,13 @@ function MatchCard({ m, slipKey }: { m: AnalysedMatch; slipKey?: string }) {
         </dl>
       </header>
 
+      {leadWhy && (
+        <p className="why-lead">
+          <span className="font-semibold text-foreground">Why {lead.label}:</span>{" "}
+          {leadWhy}
+        </p>
+      )}
+
       <ul className="divide-y px-4 pb-1" style={{ borderColor: "var(--border)" }}>
         {m.best.map((p) => (
           <PickRow
@@ -158,6 +185,28 @@ function MatchCard({ m, slipKey }: { m: AnalysedMatch; slipKey?: string }) {
       <div>
       {built && (
         <div className="space-y-4 border-t px-4 py-3" style={{ borderColor: "var(--border)" }}>
+          <section>
+            <h4 className="mb-2 text-[12px] font-semibold text-muted">Why these picks</h4>
+            <ul className="space-y-2.5">
+              {m.best.map((p) => {
+                const rs = whyFor(p, m);
+                return (
+                  <li key={p.key}>
+                    <div className="text-[13px] font-semibold">{p.label}</div>
+                    {rs.length ? (
+                      rs.map((r) => (
+                        <p key={r} className="why">
+                          {r}
+                        </p>
+                      ))
+                    ) : (
+                      <p className="why">No strong pattern in recent form. This one rests mostly on the odds and expected goals.</p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
           <section>
             <h4 className="mb-2 text-[12px] font-semibold text-muted">Recent form, newest first</h4>
             <div className="space-y-1.5">

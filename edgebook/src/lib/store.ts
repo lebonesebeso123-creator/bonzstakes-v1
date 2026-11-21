@@ -7,6 +7,7 @@ import {
   Note,
   Settings,
   Leg,
+  TrackedPick,
 } from "./types";
 import { uid } from "./format";
 
@@ -31,6 +32,7 @@ function fresh(ack: string | null): AppState {
     settings: { ...DEFAULT_SETTINGS },
     slip: [],
     deleted: [],
+    tracked: [],
   };
 }
 
@@ -53,6 +55,7 @@ function normalise(raw: Partial<AppState>): AppState {
     settings: { ...DEFAULT_SETTINGS, ...(raw.settings ?? {}) },
     slip: Array.isArray(raw.slip) ? raw.slip : [],
     deleted: Array.isArray(raw.deleted) ? raw.deleted : [],
+    tracked: Array.isArray(raw.tracked) ? raw.tracked : [],
     startingBankroll:
       typeof raw.startingBankroll === "number" && raw.startingBankroll >= 0
         ? raw.startingBankroll
@@ -262,6 +265,7 @@ export function mergeStates(local: AppState, remote: Partial<AppState>): AppStat
     bets,
     notes: union(local.notes, r.notes, (x) => x).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     adjustments: union(local.adjustments, r.adjustments, (x) => x),
+    tracked: union(local.tracked ?? [], r.tracked ?? [], (x, y) => (x.status === "open" && y.status !== "open" ? y : x)),
     deleted,
     settings: newer.settings,
     startingBankroll: newer.startingBankroll,
@@ -408,6 +412,45 @@ export function applyResults(
     return { ...s, bets };
   });
   return changed;
+}
+
+const TRACK_DAYS = 60;
+
+/** Records picks the first time they're seen; the pre-match estimate is never overwritten. */
+export function trackPicks(picks: Omit<TrackedPick, "status" | "recordedAt">[]) {
+  const s = getSnapshot();
+  const have = new Set((s.tracked ?? []).map((t) => t.id));
+  const fresh = picks.filter((p) => !have.has(p.id));
+  if (!fresh.length) return;
+  const cutoff = new Date(Date.now() - TRACK_DAYS * 86400_000).toISOString();
+  const now = new Date().toISOString();
+  update((st) => ({
+    ...st,
+    tracked: [...(st.tracked ?? []).filter((t) => t.kickoff >= cutoff), ...fresh.map((p) => ({ ...p, status: "open" as const, recordedAt: now }))],
+  }));
+}
+
+/** Settles the app's own picks from final results. */
+export function settleTracked(
+  results: Record<string, LegResult | "void">,
+  settle: (key: string, r: LegResult) => "won" | "lost" | "void"
+): number {
+  let n = 0;
+  update((s) => ({
+    ...s,
+    tracked: (s.tracked ?? []).map((t) => {
+      const r = results[t.fixtureId];
+      if (t.status !== "open" || !r) return t;
+      n++;
+      if (r === "void") return { ...t, status: "void" };
+      return {
+        ...t,
+        status: settle(t.key, r),
+        result: { home: r.home, away: r.away, htHome: r.htHome, htAway: r.htAway, corners: r.missing?.includes("corners") ? undefined : r.corners },
+      };
+    }),
+  }));
+  return n;
 }
 
 /** Replace an estimated price with the one your bookmaker actually offers. */
