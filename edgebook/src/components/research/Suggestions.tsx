@@ -196,6 +196,9 @@ export function SlipBuilder({ matches }: { matches: AnalysedMatch[] }) {
               <div className="num text-lg font-semibold text-accent">{(slip.chance * 100).toFixed(0)}%</div>
             </div>
           </div>
+          <p className="num mt-2 text-center text-[12px] text-muted">
+            {slip.legs.map((l) => l.odds.toFixed(2)).join(" × ")} = <span className="font-bold text-foreground">{slip.totalOdds.toFixed(2)}</span>
+          </p>
           <p className="hint text-center">
             Expected value {slip.legs.reduce((a, l) => a * l.prob * l.odds, 1) - 1 >= 0 ? "+" : "−"}
             {Math.abs((slip.legs.reduce((a, l) => a * l.prob * l.odds, 1) - 1) * 100).toFixed(0)}%

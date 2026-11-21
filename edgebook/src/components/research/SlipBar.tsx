@@ -133,6 +133,13 @@ export default function SlipBar() {
             </div>
           </div>
         </div>
+        {legs.length > 1 && (
+          <p className="num mt-2 text-[12px] text-muted" aria-label="How the total is worked out">
+            {legs.map((l) => (l.status === "void" ? "1.00" : l.odds.toFixed(2))).join(" × ")} ={" "}
+            <span className="font-bold text-foreground">{odds.toFixed(2)}</span>
+            <span className="block">Accumulator odds multiply: each win carries the whole return into the next leg.</span>
+          </p>
+        )}
         <p className="hint">
           {ev >= 0
             ? `On average this slip returns ${money(100 * (1 + ev), cur)} per ${money(100, cur)} staked, if the estimates are right.`
