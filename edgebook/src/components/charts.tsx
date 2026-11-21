@@ -18,13 +18,13 @@ export function ProbBar({ segments, big = false }: { segments: Segment[]; big?: 
         role="img"
         aria-label={summary}
         className={`flex w-full overflow-hidden rounded-full ${big ? "h-3.5" : "h-2.5"}`}
-        style={{ background: "rgba(255,255,255,0.06)" }}
+        style={{ background: "rgb(var(--tint) / 0.06)" }}
       >
         {segments.map((s) => (
           <div
             key={s.label}
             style={{ width: `${(s.value / total) * 100}%`, background: s.color }}
-            className="h-full border-r border-slate-950/60 last:border-r-0"
+            className="h-full border-r border-[var(--ink)] last:border-r-0"
           />
         ))}
       </div>
@@ -69,14 +69,14 @@ export function RangeBar({
     <div role="img" aria-label={label} className="relative mt-2.5 h-5">
       <div
         className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full"
-        style={{ background: "rgba(255,255,255,0.08)" }}
+        style={{ background: "rgb(var(--tint) / 0.08)" }}
       />
       <div
         className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full"
         style={{
           left: left(range[0]),
           width: `${Math.max(1, (range[1] - range[0]) * 100)}%`,
-          background: "rgba(34,197,94,0.45)",
+          background: "color-mix(in oklab, var(--mint) 50%, transparent)",
         }}
       />
       <div
@@ -85,7 +85,7 @@ export function RangeBar({
       />
       {market != null && (
         <div
-          className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-slate-900"
+          className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-[var(--ink)]"
           style={{ left: left(market), background: "var(--warn)" }}
         />
       )}
@@ -140,8 +140,8 @@ export function ScoreGrid({
                     key={a}
                     className="rounded-md py-2"
                     style={{
-                      background: `rgba(34,197,94,${(0.06 + strength * 0.62).toFixed(2)})`,
-                      color: strength > 0.55 ? "#052e16" : "var(--foreground)",
+                      background: `color-mix(in oklab, var(--mint) ${Math.round((0.06 + strength * 0.62) * 100)}%, transparent)`,
+                      color: strength > 0.55 ? "var(--on-accent)" : "var(--foreground)",
                       fontWeight: strength > 0.55 ? 600 : 400,
                     }}
                   >
@@ -187,7 +187,7 @@ export function LineChart({
   const first = data[0].value;
   const last = data[data.length - 1].value;
   const up = last >= first;
-  const stroke = up ? "#22c55e" : "#f87171";
+  const stroke = up ? "var(--mint)" : "var(--coral)";
 
   return (
     <figure>
@@ -203,14 +203,14 @@ export function LineChart({
             <stop offset="100%" stopColor={stroke} stopOpacity="0" />
           </linearGradient>
         </defs>
-        <line x1={pad.l} x2={W - pad.r} y1={y(first)} y2={y(first)} stroke="#94a3b8" strokeOpacity="0.35" strokeDasharray="4 4" />
+        <line x1={pad.l} x2={W - pad.r} y1={y(first)} y2={y(first)} stroke="var(--muted)" strokeOpacity="0.35" strokeDasharray="4 4" />
         <path d={area} fill="url(#bk-fill)" />
         <path d={line} fill="none" stroke={stroke} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
         <circle cx={x(data.length - 1)} cy={y(last)} r="4.5" fill={stroke} />
-        <text x={pad.l} y={H - 5} fill="#94a3b8" fontSize="11" fontFamily="var(--font-mono)">
+        <text x={pad.l} y={H - 5} fill="var(--muted)" fontSize="11" fontFamily="var(--font-mono)">
           {data[0].label}
         </text>
-        <text x={W - pad.r} y={H - 5} textAnchor="end" fill="#94a3b8" fontSize="11" fontFamily="var(--font-mono)">
+        <text x={W - pad.r} y={H - 5} textAnchor="end" fill="var(--muted)" fontSize="11" fontFamily="var(--font-mono)">
           {data[data.length - 1].label}
         </text>
       </svg>

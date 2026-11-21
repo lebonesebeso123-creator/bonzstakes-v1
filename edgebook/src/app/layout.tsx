@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import Toaster from "@/components/Toaster";
 import SlipBar from "@/components/research/SlipBar";
 import SyncAgent from "@/components/SyncAgent";
+import { themeScript } from "@/components/ThemeToggle";
 
 export const metadata: Metadata = {
   title: {
@@ -29,7 +30,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="dark" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>
         <a href="#main" className="skip-link">
           Skip to content

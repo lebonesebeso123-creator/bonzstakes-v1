@@ -13,12 +13,12 @@ export default function Gate() {
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-md"
+      className="fixed inset-0 z-[90] flex items-center justify-center sheet-backdrop p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="gate-title"
     >
-      <div className="card w-full max-w-md p-6 shadow-2xl" style={{ background: "#111a2e" }}>
+      <div className="card w-full max-w-md p-6 shadow-2xl" style={{ background: "var(--sheet-solid)" }}>
         <div className="mb-4 flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-on-accent">
             <ShieldCheck size={22} aria-hidden />

@@ -154,7 +154,7 @@ export default function SlipBar() {
         <div className="mt-2 flex gap-2">
           {suggested > 0 && (
             <button
-              className="chip num flex-1 justify-center !border-emerald-400/60 !text-emerald-200"
+              className="chip num flex-1 justify-center !border-[color-mix(in_oklab,var(--mint)_55%,transparent)] !text-mint"
               aria-pressed={stake === suggested}
               aria-label={`Suggested stake ${suggested}`}
               onClick={() => setStakeText(String(suggested))}

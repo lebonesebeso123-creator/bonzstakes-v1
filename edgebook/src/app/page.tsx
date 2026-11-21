@@ -159,7 +159,7 @@ function MatchesView({ leagues, slip }: { leagues: LeagueGroup[]; slip: Map<stri
               {l}
             </button>
           ))}
-          <span className="mx-1 w-px shrink-0 self-stretch bg-white/10" aria-hidden />
+          <span className="mx-1 w-px shrink-0 self-stretch bg-tint/10" aria-hidden />
           <button className="chip shrink-0" aria-pressed={valueOnly} onClick={() => setValueOnly((v) => !v)}>
             Value only
           </button>

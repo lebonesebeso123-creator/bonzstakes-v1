@@ -146,7 +146,7 @@ export default function AccountPage() {
                 {(id) => <input id={id} className="input num w-40" inputMode="decimal" value={resetAmt} onChange={(e) => setResetAmt(e.target.value)} />}
               </Field>
               <label className="flex min-h-11 items-center gap-2 text-sm">
-                <input type="checkbox" className="h-5 w-5 accent-[#22c55e]" checked={clearBets} onChange={(e) => setClearBets(e.target.checked)} />
+                <input type="checkbox" className="h-5 w-5 accent-[var(--gold)]" checked={clearBets} onChange={(e) => setClearBets(e.target.checked)} />
                 Also delete all bets
               </label>
               <button

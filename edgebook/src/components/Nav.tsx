@@ -6,6 +6,7 @@ import { BookOpen, Receipt, Search, Wallet } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { bankrollOf } from "@/lib/stats";
 import { money } from "@/lib/format";
+import ThemeToggle from "./ThemeToggle";
 
 const links = [
   { href: "/", label: "Research", Icon: Search },
@@ -52,8 +53,8 @@ export default function Nav() {
                 aria-current={isActive(href) ? "page" : undefined}
                 className={`flex min-h-10 items-center gap-2 rounded-xl px-3.5 text-sm font-semibold transition-colors ${
                   isActive(href)
-                    ? "bg-white/10 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
-                    : "text-muted hover:bg-white/5 hover:text-foreground"
+                    ? "bg-tint/10 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    : "text-muted hover:bg-tint/5 hover:text-foreground"
                 }`}
               >
                 <Icon size={16} aria-hidden />
@@ -62,6 +63,8 @@ export default function Nav() {
             ))}
           </nav>
 
+          <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Link
             href="/account"
             className="num flex min-h-9 items-center rounded-lg px-3 text-[13px] text-muted transition-colors hover:text-foreground"
@@ -70,6 +73,7 @@ export default function Nav() {
           >
             {money(balance, state.settings.currency)}
           </Link>
+          </div>
         </div>
       </header>
 

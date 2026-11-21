@@ -12,7 +12,7 @@ export function Badge({
   className?: string;
 }) {
   const tones = {
-    neutral: "bg-white/10 text-slate-200",
+    neutral: "bg-tint/10 text-slate-200",
     green: "bg-[rgba(94,224,160,0.16)] text-mint",
     amber: "bg-amber-400/20 text-amber-300",
     red: "bg-red-500/20 text-red-300",
@@ -80,7 +80,7 @@ export function Segmented<T extends string | number>({
       role="radiogroup"
       aria-label={label}
       className={`flex w-full rounded-lg p-1 sm:inline-flex sm:w-auto ${className}`}
-      style={{ background: "rgba(2,6,23,0.45)", border: "1px solid var(--border)" }}
+      style={{ background: "var(--field)", border: "1px solid var(--border)" }}
     >
       {options.map((o) => {
         const active = o.value === value;
@@ -235,7 +235,7 @@ export function Modal({
         className="sheet max-h-[92dvh] w-full overflow-y-auto rounded-t-[26px] p-5 pt-3 outline-none sm:max-w-md sm:rounded-[24px] sm:pt-5"
         style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }}
       >
-        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden />
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-tint/20 sm:hidden" aria-hidden />
         <h2 id={id} className="font-display mb-4 text-xl font-bold tracking-[-0.01em]">
           {title}
         </h2>
