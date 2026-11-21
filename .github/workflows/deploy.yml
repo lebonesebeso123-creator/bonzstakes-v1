@@ -1,25 +1,24 @@
-name: Deploy BonzStakes to GitHub Pages
+name: Data + deploy BonzStakes
 
 on:
   push:
     branches: [master, main]
+  schedule:
+    - cron: "17 */6 * * *" # fresh fixtures, odds and results every 6 hours
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: edgebook
     steps:
       - uses: actions/checkout@v4
 
@@ -29,10 +28,36 @@ jobs:
           cache: npm
           cache-dependency-path: edgebook/package-lock.json
 
+      - name: Fetch football-data.co.uk
+        run: node scripts/fetch-data.mjs 5
+
+      - name: Keep a copy of the raw data on the data branch
+        if: always()
+        run: |
+          git config user.name "bonzstakes-bot"
+          git config user.email "bonzstakes-bot@users.noreply.github.com"
+          rm -rf /tmp/raw && cp -r data/raw /tmp/raw
+          git fetch origin data || true
+          git switch --orphan data-tmp
+          git rm -rf --quiet . || true
+          cp -r /tmp/raw/* .
+          git add -A
+          git commit -q -m "data $(date -u +%FT%TZ)" || true
+          git push -f origin data-tmp:data
+          git switch -f ${{ github.ref_name }}
+
       - run: npm ci
+        working-directory: edgebook
       - run: npm test
+        working-directory: edgebook
+
+      - name: Build the app's data file
+        working-directory: edgebook
+        run: |
+          if [ -f ../scripts/build-data.ts ]; then npx tsx ../scripts/build-data.ts ../data/raw public/data; fi
 
       - name: Build static site
+        working-directory: edgebook
         run: npm run build
         env:
           STATIC_EXPORT: "true"
