@@ -493,6 +493,12 @@ button:disabled {
     @apply mt-[7px] h-1 w-1 shrink-0 rounded-full;
     background: var(--sky);
   }
+  .return-tile {
+    @apply flex min-h-14 min-w-[9.5rem] flex-col justify-center rounded-2xl px-4 py-2 text-right;
+    color: var(--on-accent);
+    background: linear-gradient(180deg, var(--gold-hi), var(--gold));
+    box-shadow: 0 10px 24px -12px rgba(242, 193, 78, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
   .stat-tile {
     @apply rounded-xl px-3 py-2.5;
     background: rgb(var(--tint) / 0.045);

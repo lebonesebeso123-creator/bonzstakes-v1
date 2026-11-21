@@ -200,25 +200,34 @@ export function Modal({
   onClose,
   title,
   children,
+  wide = false,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  wide?: boolean;
 }) {
   const id = useId();
   const ref = useRef<HTMLDivElement>(null);
+  // keep the latest onClose without re-running the focus effect on every render
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
+  // Runs only when the sheet opens or closes. Re-running it on each render used to steal focus
+  // from inputs after every keystroke.
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
-    ref.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    ref.current?.focus({ preventScroll: true });
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
       prev?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
   if (!open) return null;
   return (
     <div
@@ -232,7 +241,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={id}
         onClick={(e) => e.stopPropagation()}
-        className="sheet max-h-[92dvh] w-full overflow-y-auto rounded-t-[26px] p-5 pt-3 outline-none sm:max-w-md sm:rounded-[24px] sm:pt-5"
+        className={`sheet max-h-[94dvh] w-full overflow-y-auto rounded-t-[26px] p-5 pt-3 outline-none sm:rounded-[24px] sm:pt-6 ${wide ? "sm:max-w-lg sm:p-7" : "sm:max-w-md"}`}
         style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-tint/20 sm:hidden" aria-hidden />

@@ -84,7 +84,7 @@ export default function SlipBar() {
         </button>
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)} title={legs.length === 1 ? "Single" : `${legs.length}-fold accumulator`}>
+      <Modal wide open={open} onClose={() => setOpen(false)} title={legs.length === 1 ? "Single" : `${legs.length}-fold accumulator`}>
         <ul className="-mt-1 divide-y" style={{ borderColor: "var(--border)" }}>
           {legs.map((l) => (
             <li key={l.id} className="flex items-center gap-3 py-2.5">
@@ -139,22 +139,35 @@ export default function SlipBar() {
             : `The bookmaker has about a ${Math.abs(ev * 100).toFixed(0)}% edge on this slip. Each leg's margin multiplies.`}
         </p>
 
-        <label className="label mt-4" htmlFor="stake">
-          Stake ({cur})
-        </label>
-        <input
-          id="stake"
-          className="input num text-[16px]"
-          inputMode="decimal"
-          value={stakeText}
-          onChange={(e) => setStakeText(e.target.value)}
-          aria-invalid={!validStake}
-          aria-describedby="stake-hint"
-        />
-        <div className="mt-2 flex gap-2">
+        <div className="mt-5 grid grid-cols-[1fr_auto] items-end gap-3">
+          <div>
+            <label className="label" htmlFor="stake">
+              Stake ({cur})
+            </label>
+            <input
+              id="stake"
+              className="input num !min-h-14 !text-[22px] font-bold"
+              type="text"
+              inputMode="decimal"
+              enterKeyHint="done"
+              autoComplete="off"
+              value={stakeText}
+              onChange={(e) => setStakeText(e.target.value.replace(/[^0-9.,]/g, ""))}
+              onFocus={(e) => e.target.select()}
+              aria-invalid={!validStake}
+              aria-describedby="stake-hint"
+            />
+          </div>
+          <div className="return-tile" aria-live="polite">
+            <div className="text-[12px] font-semibold opacity-80">Returns</div>
+            <div className="num text-[22px] font-extrabold leading-tight">{validStake ? money(stake * odds, cur) : "–"}</div>
+            {validStake && <div className="num text-[12px] font-semibold opacity-80">profit {money(stake * odds - stake, cur)}</div>}
+          </div>
+        </div>
+        <div className="mt-2.5 grid grid-cols-4 gap-2">
           {suggested > 0 && (
             <button
-              className="chip num flex-1 justify-center !border-[color-mix(in_oklab,var(--mint)_55%,transparent)] !text-mint"
+              className="chip num !min-h-11 justify-center !text-[15px] !border-[color-mix(in_oklab,var(--mint)_55%,transparent)] !text-mint"
               aria-pressed={stake === suggested}
               aria-label={`Suggested stake ${suggested}`}
               onClick={() => setStakeText(String(suggested))}
@@ -162,26 +175,21 @@ export default function SlipBar() {
               ★ {suggested}
             </button>
           )}
-          {QUICK.filter((q) => q !== suggested).slice(0, 3).map((q) => (
-            <button key={q} className="chip num flex-1 justify-center" aria-pressed={stake === q} onClick={() => setStakeText(String(q))}>
+          {QUICK.filter((q) => q !== suggested).slice(0, suggested > 0 ? 3 : 4).map((q) => (
+            <button key={q} className="chip num !min-h-11 justify-center !text-[15px]" aria-pressed={stake === q} onClick={() => setStakeText(String(q))}>
               {q}
             </button>
           ))}
         </div>
-        {suggested > 0 && (
-          <p className="hint">
-            ★ Suggested {money(suggested, cur)}: {ev > 0 ? "quarter-Kelly, capped at 2% of your bankroll" : "no edge, so just a small 1% tracking stake"}.
-          </p>
-        )}
-        <p id="stake-hint" className={`hint ${validStake ? "" : "!text-danger"}`}>
+        <p id="stake-hint" className={`hint !text-[13px] ${validStake ? "" : "!text-danger"}`}>
           {validStake
-            ? `Returns ${money(stake * odds, cur)} · paper bankroll ${money(balance, cur)}`
+            ? `Paper bankroll ${money(balance, cur)}${suggested > 0 ? `. ★ suggested ${money(suggested, cur)}: ${ev > 0 ? "quarter-Kelly, max 2% of bankroll" : "no edge, a small 1% tracking stake"}` : ""}.`
             : stake > balance
             ? `More than your paper bankroll (${money(balance, cur)}).`
             : "Enter a stake above 0."}
         </p>
 
-        <button className="btn-primary mt-4 w-full !min-h-12 text-[15px]" disabled={!validStake} onClick={place}>
+        <button className="btn-primary mt-5 w-full !min-h-14 !rounded-2xl !text-[17px]" disabled={!validStake} onClick={place}>
           Place bet · {validStake ? money(stake, cur) : "–"}
         </button>
         <button
