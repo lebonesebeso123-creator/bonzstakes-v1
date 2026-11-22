@@ -19,11 +19,9 @@ globalThis.fetch = (async () => new Response(JSON.stringify(file))) as typeof fe
 test("fast scores are matched by league, kick-off and team names", async () => {
   const r = await FileProvider.getResult(id, new Date("2026-11-22T08:00:00Z"), { home: "Eintracht Frankfurt", away: "Hoffenheim", kickoff: "2026-11-21T15:30:00.000Z" });
   assert.ok(r && r !== "void");
-  if (r !== "void" && r) {
-    assert.equal(r.home, 2);
-    assert.equal(r.corners, 11);
-    assert.deepEqual(r.missing, []);
-  }
+  assert.equal(r.home, 2);
+  assert.equal(r.corners, 11);
+  assert.deepEqual(r.missing, []);
   const lev = await FileProvider.getResult(fixtureId("D1", "2026-11-21T15:30:00Z", "Leverkusen", "Paderborn"), new Date(), { home: "Bayer Leverkusen", away: "Paderborn", kickoff: "2026-11-21T15:30:00Z" });
   assert.ok(lev && lev !== "void" && lev.missing?.includes("corners"), "missing corners → corner legs void");
   const wrongTime = await FileProvider.getResult(id, new Date(), { home: "Eintracht Frankfurt", away: "Hoffenheim", kickoff: "2026-11-22T19:30:00Z" });
