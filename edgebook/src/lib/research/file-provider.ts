@@ -4,7 +4,8 @@
  */
 import { LEAGUES, LiveFile, displayName } from "../fd/live-file";
 import { OppTier } from "../types";
-import { DataProvider, Fixture, ResultOrVoid } from "./data";
+import { DataProvider, Fixture, MatchHint, ResultOrVoid } from "./data";
+import { nameSimilarity } from "./live";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 let cache: { at: number; file: LiveFile } | null = null;
@@ -62,14 +63,39 @@ export const FileProvider: DataProvider = {
     if (!file) throw new Error("Match data isn't available yet. It refreshes every 6 hours; try again shortly.");
     return file.fixtures.filter((f) => new Date(f.t) >= from && new Date(f.t) < to).map((f) => toFixture(f, file.generatedAt));
   },
-  async getResult(id): Promise<ResultOrVoid | null> {
-    const file = await loadLiveFile();
-    const r = file?.results.find((x) => x[0] === id);
-    if (!r) return null;
-    const [, home, away, hh, ha, corners] = r;
+  async getResult(id, now = new Date(), hint?: MatchHint): Promise<ResultOrVoid | null> {
+    const file = await loadLiveFile(true);
+    if (!file) return null;
+    // 1) football-data.co.uk: exact id, with corners and half-time
+    const r = file.results.find((x) => x[0] === id);
+    if (r) {
+      const [, home, away, hh, ha, corners] = r;
+      const missing: ("ht" | "corners")[] = [];
+      if (hh < 0 || ha < 0) missing.push("ht");
+      if (corners < 0) missing.push("corners");
+      return { home, away, htHome: Math.max(0, hh), htAway: Math.max(0, ha), corners: Math.max(0, corners), missing };
+    }
+    // 2) fast scores: same league, kick-off within 3 hours, best-matching team names
+    const [, div, day] = id.split(":");
+    if (!hint || !file.fast?.length) return null;
+    const t = new Date(hint.kickoff).getTime() || new Date(`${day}T12:00:00Z`).getTime();
+    let best: NonNullable<LiveFile["fast"]>[number] | null = null;
+    let score = 0;
+    for (const x of file.fast) {
+      if (x[0] !== div || Math.abs(new Date(x[1]).getTime() - t) > 3 * 3600_000) continue;
+      const s = nameSimilarity(hint.home, x[2]) + nameSimilarity(hint.away, x[3]);
+      if (s > score) {
+        score = s;
+        best = x;
+      }
+    }
+    if (!best || score < 0.6) return null;
+    const [, , , , status, fh, fa, hh, ha, corners] = best;
+    if (status === "VOID") return now.getTime() - t > 48 * 3600_000 ? "void" : null;
+    if (fh < 0 || fa < 0) return null;
     const missing: ("ht" | "corners")[] = [];
     if (hh < 0 || ha < 0) missing.push("ht");
     if (corners < 0) missing.push("corners");
-    return { home, away, htHome: Math.max(0, hh), htAway: Math.max(0, ha), corners: Math.max(0, corners), missing };
+    return { home: fh, away: fa, htHome: Math.max(0, hh), htAway: Math.max(0, ha), corners: Math.max(0, corners), missing };
   },
 };

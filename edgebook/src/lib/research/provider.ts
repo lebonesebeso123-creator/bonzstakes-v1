@@ -1,4 +1,4 @@
-import { DataProvider, DemoProvider, ResultOrVoid, demoForceResult } from "./data";
+import { DataProvider, DemoProvider, MatchHint, ResultOrVoid, demoForceResult } from "./data";
 import { createLiveProvider } from "./live";
 import { FileProvider } from "./file-provider";
 
@@ -17,8 +17,8 @@ export function getProvider(dataUrl?: string): DataProvider {
 }
 
 /** Results are fetched from whichever source a fixture came from. */
-export async function resultFor(fixtureId: string, dataUrl?: string, forceDemo = false): Promise<ResultOrVoid | null> {
-  if (fixtureId.startsWith("fdc:")) return FileProvider.getResult(fixtureId);
+export async function resultFor(fixtureId: string, dataUrl?: string, forceDemo = false, hint?: MatchHint): Promise<ResultOrVoid | null> {
+  if (fixtureId.startsWith("fdc:")) return FileProvider.getResult(fixtureId, new Date(), hint);
   if (fixtureId.startsWith("fd:")) return dataUrl ? getProvider(dataUrl).getResult(fixtureId) : null;
   return forceDemo ? demoForceResult(fixtureId) : DemoProvider.getResult(fixtureId);
 }

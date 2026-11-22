@@ -69,7 +69,7 @@ export function ResultChecker() {
     setBusy(true);
     const n = await settleDue(forceDemo);
     setBusy(false);
-    toast(n ? `Settled ${n} ${n === 1 ? "match" : "matches"}` : "No new results yet. Real results arrive 1–3 days after the match.");
+    toast(n ? `Settled ${n} ${n === 1 ? "match" : "matches"}` : "No new results yet. Scores usually arrive within 3 hours of full time.");
   };
 
   if (!pending.length) return null;

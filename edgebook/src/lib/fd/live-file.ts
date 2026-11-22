@@ -68,7 +68,10 @@ export interface LiveFile {
   generatedAt: string;
   source: string;
   fixtures: LiveFixture[];
-  /** [id, ftHome, ftAway, htHome, htAway, totalCorners]; -1 = not available */
+  /** football-data.co.uk results: [id, ftHome, ftAway, htHome, htAway, totalCorners]; -1 = not available */
   results: [string, number, number, number, number, number][];
+  /** fast final scores (ESPN), matched by league, kick-off and team names:
+   *  [div, kickoff, home, away, status "FT"|"VOID", ftHome, ftAway, htHome, htAway, corners]; -1 = not available */
+  fast?: [string, string, string, string, string, number, number, number, number, number][];
   backtest: { testedOn: number; seasons: string; trainedOn: string; topPicks: BacktestStat; valueBest: BacktestStat; valueSoft: BacktestStat };
 }

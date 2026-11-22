@@ -44,6 +44,13 @@ export interface Fixture {
   cornersMean?: number;
 }
 
+/** What we know about a match we bet on, to find its result in sources that name teams differently. */
+export interface MatchHint {
+  home: string;
+  away: string;
+  kickoff: string;
+}
+
 /** A finished match, or "void" when it was postponed, cancelled or abandoned. */
 export type ResultOrVoid = MatchResult | "void";
 
@@ -52,7 +59,7 @@ export interface DataProvider {
   readonly isDemo: boolean;
   getFixtures(from: Date, to: Date): Promise<Fixture[]>;
   /** null until the match has finished; "void" if it won't be played */
-  getResult(fixtureId: string, now?: Date): Promise<ResultOrVoid | null>;
+  getResult(fixtureId: string, now?: Date, hint?: MatchHint): Promise<ResultOrVoid | null>;
 }
 
 /* ---------------- deterministic randomness ---------------- */
@@ -273,7 +280,8 @@ export const DemoProvider: DataProvider = {
   async getResult(fixtureId, now = new Date()) {
     const [lid, date, pair] = fixtureId.split("|");
     const l = LEAGUES.find((x) => x.id === lid);
-    if (!l || !pair) return null;
+    if (!pair) return null;
+    if (!l) return "void"; // a league that was removed (e.g. Botswana, South Africa)
     const [h, a] = pair.split("-").map(Number);
     const fx = weekFixtures(l, mondayOf(new Date(`${date}T12:00:00`))).find((f) => f.id === fixtureId);
     if (!fx || now.getTime() < fx.kickoff.getTime() + 115 * 60_000) return null;

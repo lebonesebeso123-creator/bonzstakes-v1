@@ -104,13 +104,25 @@ const settled = results
   .filter((m) => Date.parse(m.t) > since)
   .map((m) => [fixtureId(m.div, m.t, m.home, m.away), m.fh!, m.fa!, m.hh ?? -1, m.ha ?? -1, m.hc !== undefined && m.ac !== undefined ? m.hc + m.ac : -1] as const);
 
+// fast scores from ESPN (optional)
+let fast: NonNullable<LiveFile["fast"]> = [];
+try {
+  const rows = JSON.parse(readFileSync(`${raw}/espn.json`, "utf8")) as { div: string; t: string; home: string; away: string; status: string; fh?: number; fa?: number; hh?: number; ha?: number; corners?: number }[];
+  fast = rows
+    .filter((r) => r.status === "FT" || r.status === "VOID")
+    .map((r) => [r.div, r.t, r.home, r.away, r.status, r.fh ?? -1, r.fa ?? -1, r.hh ?? -1, r.ha ?? -1, r.corners ?? -1]);
+} catch {
+  /* no fast results this run */
+}
+
 const file: LiveFile = {
   generatedAt: new Date().toISOString(),
   source: "football-data.co.uk",
   fixtures: out_,
   results: settled as unknown as LiveFile["results"],
+  fast,
   backtest: JSON.parse(readFileSync(new URL("../edgebook/src/lib/fd/backtest-summary.json", import.meta.url), "utf8")),
 };
 mkdirSync(out, { recursive: true });
 writeFileSync(`${out}/live.json`, JSON.stringify(file));
-console.log(`live.json: ${out_.length} fixtures, ${settled.length} recent results`);
+console.log(`live.json: ${out_.length} fixtures, ${settled.length} recent results, ${fast.length} fast scores`);

@@ -4,7 +4,7 @@ on:
   push:
     branches: [master, main]
   schedule:
-    - cron: "17 */6 * * *" # fresh fixtures, odds and results every 6 hours
+    - cron: "17 */3 * * *" # fresh fixtures, odds and results every 3 hours
   workflow_dispatch:
 
 permissions:
@@ -30,6 +30,10 @@ jobs:
 
       - name: Fetch football-data.co.uk
         run: node scripts/fetch-data.mjs 5
+
+      - name: Fetch fast final scores (ESPN)
+        continue-on-error: true
+        run: node scripts/fetch-results.mjs 6
 
       # Pushed from a separate temporary repo, so the working copy (and data/raw) is never touched.
       - name: Keep a copy of the raw data on the data branch
